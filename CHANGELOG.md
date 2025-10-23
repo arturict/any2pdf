@@ -2,20 +2,34 @@
 
 ## Version 1.3.0 (October 2025)
 
-### 🎯 Documentation & Structure
+### 🎯 Documentation & Structure Overhaul
+
 #### Documentation Reorganization
-- **Cleaner Root Directory**: Moved less critical docs to `docs/` folder
-- **Essential Files Only**: Kept README, QUICKSTART, WSL_SETUP, FEATURES, CONTRIBUTING, CHANGELOG in root
-- **Better Navigation**: More intuitive project structure
+- **Cleaner Root Directory**: Moved WSL_SETUP.md, CONTRIBUTING.md, FEATURES.md, QUICKSTART.md to `docs/` folder
+- **Essential Files Only**: Kept README, CHANGELOG, LICENSE in root for better clarity
+- **Merged Documentation**: Integrated features and quickstart into main README
+- **Better Navigation**: Streamlined project structure, easier to find information
 
 #### GitHub Copilot Integration
 - **Comprehensive AI Agent Instructions**: Added `.github/copilot-instructions.md`
   - Complete project architecture overview
   - AI integration details (OpenAI GPT-5, Google Gemini)
+  - Reasoning effort level explanations
   - Development guidelines and best practices
-  - Common tasks and troubleshooting guides
-  - Testing strategies and security considerations
-- **Better AI Assistance**: Optimized for AI coding assistants like GitHub Copilot
+  - Common patterns and troubleshooting guides
+  - Platform-specific instructions (WSL for Windows)
+- **Better AI Assistance**: Optimized for AI coding assistants like GitHub Copilot, Claude Code, Cursor, etc.
+
+#### README Improvements
+- **Enhanced Features Section**: Clear bullet points with emojis for visual clarity
+- **Improved Quickstart**: Single-command installation and usage examples
+- **Better AI Chat Documentation**: Clear explanation of providers, models, and reasoning levels
+- **Streamlined Workflow**: Simplified instructions for ChatGPT/AI Tools integration
+
+### 📝 Documentation Links
+- All extended documentation now in `docs/` folder
+- Main README links to detailed guides (USAGE.md, PERFORMANCE.md, PROJECT_STRUCTURE.md)
+- Windows users pointed to WSL setup in docs
 
 ---
 
