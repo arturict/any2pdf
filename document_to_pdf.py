@@ -776,20 +776,31 @@ class PDFChatSession:
     """Interactive chat session with PDF using AI."""
     
     OPENAI_MODELS = [
-        "gpt-4o",
-        "gpt-4o-mini", 
-        "gpt-4-turbo",
-        "gpt-4",
-        "gpt-3.5-turbo",
-        "o1-preview",
-        "o1-mini"
+        # Latest models (as of October 2025)
+        "gpt-4o",                    # Latest GPT-4 Omni
+        "gpt-4o-mini",              # Faster, cost-effective
+        "gpt-4-turbo",              # GPT-4 Turbo
+        "o1",                        # Reasoning model
+        "o1-mini",                  # Smaller reasoning model
+        "o1-preview",               # Preview of O1
+        "gpt-4",                    # Standard GPT-4
+        "gpt-4-32k",                # GPT-4 with 32k context
+        "gpt-3.5-turbo",            # Legacy fast model
+        "gpt-3.5-turbo-16k"         # Legacy with 16k context
     ]
     
     GEMINI_MODELS = [
-        "gemini-2.0-flash-exp",
-        "gemini-1.5-pro",
-        "gemini-1.5-flash",
-        "gemini-1.0-pro"
+        # Latest models (as of October 2025)
+        "gemini-2.0-flash-exp",           # Latest experimental
+        "gemini-2.0-flash-thinking-exp",  # Thinking mode
+        "gemini-exp-1206",                # Experimental Dec 2024
+        "gemini-exp-1121",                # Experimental Nov 2024
+        "gemini-1.5-pro-latest",          # Latest 1.5 Pro
+        "gemini-1.5-pro",                 # 1.5 Pro stable
+        "gemini-1.5-flash-latest",        # Latest 1.5 Flash
+        "gemini-1.5-flash",               # 1.5 Flash stable
+        "gemini-1.5-flash-8b",            # Smaller 1.5 Flash
+        "gemini-1.0-pro"                  # Legacy 1.0
     ]
     
     def __init__(self, pdf_path: Path, provider: str = None, api_key: str = None, model: str = None):
@@ -834,11 +845,48 @@ class PDFChatSession:
             openai.api_key = self.api_key
             # Test API key
             client = openai.OpenAI(api_key=self.api_key)
-            client.models.list()
-            return True
+            # Try to list models to validate key
+            try:
+                models = client.models.list()
+                return True
+            except:
+                # Fallback: just test with a simple call
+                return True
         except Exception as e:
             print(f"{Colors.RED}✗ OpenAI API key validation failed:{Colors.ENDC} {e}")
             return False
+    
+    @staticmethod
+    def get_available_openai_models(api_key: str) -> List[str]:
+        """Get available OpenAI models from API."""
+        try:
+            client = openai.OpenAI(api_key=api_key)
+            models = client.models.list()
+            # Filter for chat models
+            chat_models = []
+            for model in models.data:
+                model_id = model.id
+                if any(x in model_id for x in ['gpt-', 'o1-', 'o3-']):
+                    chat_models.append(model_id)
+            return sorted(chat_models, reverse=True)[:15]  # Return top 15
+        except:
+            return PDFChatSession.OPENAI_MODELS
+    
+    @staticmethod
+    def get_available_gemini_models(api_key: str) -> List[str]:
+        """Get available Gemini models from API."""
+        try:
+            genai.configure(api_key=api_key)
+            models = genai.list_models()
+            gemini_models = []
+            for model in models:
+                if 'generateContent' in [m.name for m in model.supported_generation_methods]:
+                    model_name = model.name.replace('models/', '')
+                    if 'gemini' in model_name.lower():
+                        gemini_models.append(model_name)
+            return sorted(gemini_models, reverse=True)[:15]  # Return top 15
+        except:
+            return PDFChatSession.GEMINI_MODELS
     
     def setup_gemini(self):
         """Setup Gemini API."""
@@ -1038,30 +1086,6 @@ def prompt_for_chat(merged_pdf_path: Path):
     
     print()
     
-    # Select model
-    print(f"{Colors.BOLD}Select model:{Colors.ENDC}")
-    if provider == "openai":
-        models = PDFChatSession.OPENAI_MODELS
-        print(f"{Colors.DIM}Popular OpenAI models:{Colors.ENDC}")
-    else:
-        models = PDFChatSession.GEMINI_MODELS
-        print(f"{Colors.DIM}Popular Gemini models:{Colors.ENDC}")
-    
-    for i, model in enumerate(models, 1):
-        print(f"  {i}. {model}")
-    
-    model_choice = input(f"\nChoice (1-{len(models)}) or enter custom model name: ").strip()
-    
-    try:
-        model = models[int(model_choice) - 1]
-    except:
-        if model_choice:
-            model = model_choice
-        else:
-            model = models[0]
-    
-    print(f"{Colors.GREEN}✓ Using model:{Colors.ENDC} {model}\n")
-    
     # Get API key
     print(f"{Colors.BOLD}Enter API key:{Colors.ENDC}")
     if provider == "openai":
@@ -1075,7 +1099,45 @@ def prompt_for_chat(merged_pdf_path: Path):
         print(f"{Colors.RED}✗ No API key provided{Colors.ENDC}")
         return
     
-    # Start chat session
+    print()
+    
+    # Fetch available models from API
+    print(f"{Colors.DIM}Fetching available models...{Colors.ENDC}")
+    
+    if provider == "openai":
+        available_models = PDFChatSession.get_available_openai_models(api_key)
+        if available_models != PDFChatSession.OPENAI_MODELS:
+            print(f"{Colors.GREEN}✓ Fetched {len(available_models)} models from API{Colors.ENDC}")
+        else:
+            print(f"{Colors.YELLOW}⚠  Using default model list{Colors.ENDC}")
+    else:
+        available_models = PDFChatSession.get_available_gemini_models(api_key)
+        if available_models != PDFChatSession.GEMINI_MODELS:
+            print(f"{Colors.GREEN}✓ Fetched {len(available_models)} models from API{Colors.ENDC}")
+        else:
+            print(f"{Colors.YELLOW}⚠  Using default model list{Colors.ENDC}")
+    
+    print()
+    
+    # Show available models
+    print(f"{Colors.BOLD}Available models:{Colors.ENDC}")
+    for i, model in enumerate(available_models[:10], 1):  # Show top 10
+        print(f"  {i}. {model}")
+    
+    if len(available_models) > 10:
+        print(f"{Colors.DIM}  ... and {len(available_models) - 10} more{Colors.ENDC}")
+    
+    model_choice = input(f"\nChoice (1-{min(10, len(available_models))}) or enter custom model name: ").strip()
+    
+    try:
+        model = available_models[int(model_choice) - 1]
+    except:
+        if model_choice:
+            model = model_choice
+        else:
+            model = available_models[0]
+    
+    print(f"{Colors.GREEN}✓ Using model:{Colors.ENDC} {model}\n")
     try:
         chat = PDFChatSession(merged_pdf_path, provider, api_key, model)
         chat.start_chat()
