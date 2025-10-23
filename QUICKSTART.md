@@ -5,6 +5,8 @@
 sudo apt-get update && sudo apt-get install -y libreoffice tesseract-ocr tesseract-ocr-deu poppler-utils imagemagick && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt
 ```
 
+**Für Windows-Nutzer:** Nutze WSL (Windows Subsystem for Linux) - siehe unten.
+
 ## Oder automatisch:
 ```bash
 ./setup.sh
@@ -67,6 +69,13 @@ python test_converter.py
 **Das war's!** Alle Dateien sind jetzt in einem durchsuchbaren PDF! 🎉
 
 ## Troubleshooting
+
+**Windows-Nutzer:**
+```powershell
+# WSL installieren (in PowerShell als Administrator):
+wsl --install
+# Dann Ubuntu-Terminal öffnen und obige Ubuntu-Anweisungen folgen
+```
 
 **Virtual Environment aktivieren:**
 ```bash

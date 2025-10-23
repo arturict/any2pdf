@@ -49,6 +49,23 @@ pip install -r requirements.txt
 python document_to_pdf.py ./deine_dokumente --merge
 ```
 
+### Windows (mit WSL)
+
+> **Wichtig**: Für Windows-Nutzer wird die Verwendung von WSL (Windows Subsystem for Linux) empfohlen.
+
+```powershell
+# 1. WSL installieren (PowerShell als Administrator)
+wsl --install
+
+# 2. Ubuntu-Terminal öffnen und obige Ubuntu-Anweisungen folgen
+```
+
+**Warum WSL?**
+- LibreOffice und Tesseract laufen am besten unter Linux
+- Bessere Performance und Kompatibilität
+- Einfache Installation aller Dependencies
+- Native Linux-Umgebung unter Windows
+
 ## Workflow für ChatGPT/Claude
 
 ### Einfachster Workflow (alles in einem PDF)

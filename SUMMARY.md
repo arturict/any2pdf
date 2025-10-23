@@ -148,6 +148,13 @@ sudo apt-get update && sudo apt-get install -y \
     pip install -r requirements.txt
 ```
 
+**Windows-Nutzer:**
+```powershell
+# WSL installieren (PowerShell als Administrator)
+wsl --install
+# Dann Ubuntu-Terminal öffnen und obige Anweisungen folgen
+```
+
 ## 💡 Pro-Tipps
 
 1. **Für ChatGPT**: Immer `--merge` verwenden für EIN Dokument

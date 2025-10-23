@@ -30,6 +30,17 @@ sudo apt-get install -y libreoffice tesseract-ocr tesseract-ocr-deu poppler-util
 brew install libreoffice tesseract tesseract-lang poppler imagemagick
 ```
 
+**Windows:**
+> ⚠️ **Für Windows-Nutzer**: Bitte verwende [WSL (Windows Subsystem for Linux)](https://learn.microsoft.com/de-de/windows/wsl/install) und folge dann den Ubuntu/Debian-Anweisungen.
+> 
+> **Ausführliche WSL-Anleitung**: Siehe [WSL_SETUP.md](WSL_SETUP.md) für eine Schritt-für-Schritt-Anleitung.
+> 
+> ```powershell
+> # In PowerShell als Administrator:
+> wsl --install
+> ```
+> Nach der Installation von WSL, öffne das Ubuntu-Terminal und folge den Ubuntu/Debian-Anweisungen oben.
+
 ### 2. Python-Pakete installieren
 
 ```bash

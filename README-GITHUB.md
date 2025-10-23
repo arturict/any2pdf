@@ -135,9 +135,21 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### Windows
+> ⚠️ **Windows users**: Please use [WSL (Windows Subsystem for Linux)](https://learn.microsoft.com/windows/wsl/install) and follow the Ubuntu/Debian instructions.
+> 
+> **Detailed WSL Guide**: See [WSL_SETUP.md](WSL_SETUP.md) for step-by-step instructions.
+> 
+> ```powershell
+> # In PowerShell (as Administrator):
+> wsl --install
+> ```
+> 
+> After WSL installation, open Ubuntu terminal and follow Ubuntu/Debian instructions above.
+
 ### Automated Setup
 ```bash
-# Use the setup script (Ubuntu/Debian only)
+# Use the setup script (Ubuntu/Debian/WSL only)
 ./setup.sh
 ```
 

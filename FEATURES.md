@@ -139,6 +139,8 @@ file-from-folder/
 - Poppler (PDF-Verarbeitung)
 - ImageMagick (Bild-Konvertierung)
 
+**Hinweis für Windows:** Verwende WSL (Windows Subsystem for Linux) für beste Kompatibilität.
+
 ### Python
 - Pillow (Bildverarbeitung)
 - pytesseract (OCR)
