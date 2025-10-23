@@ -3,6 +3,11 @@
 Document to PDF Converter with OCR
 Converts various document formats (PPTX, DOCX, images) to searchable PDFs.
 Perfect for preparing educational materials for AI analysis.
+
+Performance optimized with:
+- Parallel processing for batch conversions
+- Smart caching to avoid re-conversions
+- Optimized OCR detection
 """
 
 import os
@@ -10,8 +15,13 @@ import sys
 import argparse
 import subprocess
 import shutil
+import hashlib
+import json
 from pathlib import Path
 from typing import List, Dict, Tuple
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from functools import partial
+import time
 
 
 # ANSI Color codes
@@ -57,7 +67,7 @@ class DocumentConverter:
     PDF_FORMATS = {'.pdf'}
     TEXT_FORMATS = {'.txt', '.md', '.csv', '.tsv', '.log', '.json', '.xml', '.html', '.htm'}
     
-    def __init__(self, source_folder: Path, output_folder: Path = None, use_ocr: bool = True, merge_output: bool = False):
+    def __init__(self, source_folder: Path, output_folder: Path = None, use_ocr: bool = True, merge_output: bool = False, max_workers: int = None, use_cache: bool = True):
         """
         Initialize the converter.
         
@@ -66,23 +76,85 @@ class DocumentConverter:
             output_folder: Path to output folder (default: source_folder/converted_pdfs)
             use_ocr: Whether to apply OCR to documents (default: True)
             merge_output: Whether to merge all PDFs into a single file (default: False)
+            max_workers: Max parallel workers (default: CPU count)
+            use_cache: Use caching to skip already converted files (default: True)
         """
         self.source_folder = Path(source_folder).resolve()
         self.output_folder = output_folder or (self.source_folder / "converted_pdfs")
         self.use_ocr = use_ocr
         self.merge_output = merge_output
+        self.max_workers = max_workers or min(os.cpu_count() or 4, 4)  # Max 4 for safety
+        self.use_cache = use_cache
+        self.cache_file = self.output_folder / ".conversion_cache.json"
         
         self.stats = {
             'total': 0,
             'converted': 0,
             'failed': 0,
-            'skipped': 0
+            'skipped': 0,
+            'cached': 0
         }
         
         self.converted_pdfs = []
+        self.conversion_cache = self._load_cache() if use_cache else {}
         
         # Check dependencies
         self.deps = self._check_dependencies()
+    
+    def _load_cache(self) -> Dict:
+        """Load conversion cache from disk."""
+        if self.cache_file.exists():
+            try:
+                with open(self.cache_file, 'r') as f:
+                    return json.load(f)
+            except:
+                return {}
+        return {}
+    
+    def _save_cache(self):
+        """Save conversion cache to disk."""
+        try:
+            self.output_folder.mkdir(parents=True, exist_ok=True)
+            with open(self.cache_file, 'w') as f:
+                json.dump(self.conversion_cache, f, indent=2)
+        except Exception as e:
+            print(f"  {Colors.YELLOW}⚠  Failed to save cache:{Colors.ENDC} {e}")
+    
+    def _get_file_hash(self, file_path: Path) -> str:
+        """Calculate hash of file for caching."""
+        hasher = hashlib.md5()
+        hasher.update(str(file_path.stat().st_mtime).encode())
+        hasher.update(str(file_path.stat().st_size).encode())
+        return hasher.hexdigest()
+    
+    def _is_cached(self, file_path: Path, output_path: Path) -> bool:
+        """Check if file conversion is cached and output exists."""
+        if not self.use_cache:
+            return False
+        
+        file_hash = self._get_file_hash(file_path)
+        cache_key = str(file_path)
+        
+        if cache_key in self.conversion_cache:
+            cached_hash = self.conversion_cache[cache_key].get('hash')
+            cached_output = self.conversion_cache[cache_key].get('output')
+            
+            if cached_hash == file_hash and Path(cached_output).exists():
+                return True
+        
+        return False
+    
+    def _update_cache(self, file_path: Path, output_path: Path):
+        """Update cache entry for successful conversion."""
+        if not self.use_cache:
+            return
+        
+        file_hash = self._get_file_hash(file_path)
+        self.conversion_cache[str(file_path)] = {
+            'hash': file_hash,
+            'output': str(output_path),
+            'timestamp': time.time()
+        }
         
     def _check_dependencies(self) -> Dict[str, bool]:
         """Check if required tools are installed."""
@@ -131,7 +203,15 @@ class DocumentConverter:
         all_formats = self.OFFICE_FORMATS | self.IMAGE_FORMATS | self.PDF_FORMATS | self.TEXT_FORMATS
         
         for root, dirs, filenames in os.walk(self.source_folder):
+            # Skip output folder
+            if Path(root) == self.output_folder:
+                continue
+                
             for filename in filenames:
+                # Skip cache file
+                if filename == '.conversion_cache.json':
+                    continue
+                    
                 file_path = Path(root) / filename
                 if file_path.suffix.lower() in all_formats:
                     files.append(file_path)
@@ -494,11 +574,53 @@ class DocumentConverter:
         if success:
             print(f"  {Colors.GREEN}✓ Saved to:{Colors.ENDC} {Colors.BOLD}{output_path.name}{Colors.ENDC}")
             self.converted_pdfs.append(output_path)
+            self._update_cache(file_path, output_path)
         
         return success
     
+    def _convert_file_worker(self, file_path: Path) -> Tuple[bool, Path]:
+        """Worker function for parallel conversion."""
+        ext = file_path.suffix.lower()
+        
+        # Generate output filename
+        relative_path = file_path.relative_to(self.source_folder)
+        output_name = f"{relative_path.parent / file_path.stem}.pdf".replace('/', '_').replace('\\', '_')
+        if output_name.startswith('._'):
+            output_name = output_name[2:]
+        output_path = self.output_folder / output_name
+        
+        # Handle duplicate names
+        if output_path.exists() and not self._is_cached(file_path, output_path):
+            counter = 1
+            while output_path.exists():
+                output_path = self.output_folder / f"{output_path.stem}_{counter}.pdf"
+                counter += 1
+        
+        # Check cache first
+        if self._is_cached(file_path, output_path):
+            return ('cached', output_path)
+        
+        success = False
+        
+        if ext in self.OFFICE_FORMATS:
+            success = self.convert_office_to_pdf(file_path, output_path)
+            if success and self.use_ocr and self.deps['tesseract'] and self.deps['pdftoppm']:
+                self.apply_ocr_to_pdf(output_path)
+        elif ext in self.IMAGE_FORMATS:
+            success = self.convert_image_to_pdf(file_path, output_path)
+        elif ext in self.TEXT_FORMATS:
+            success = self.convert_text_to_pdf(file_path, output_path)
+        elif ext in self.PDF_FORMATS:
+            success = self.copy_pdf(file_path, output_path)
+        
+        if success:
+            self._update_cache(file_path, output_path)
+            return (True, output_path)
+        else:
+            return (False, output_path)
+    
     def convert_all(self):
-        """Convert all files in the source folder."""
+        """Convert all files in the source folder with parallel processing."""
         # Create output directory
         self.output_folder.mkdir(parents=True, exist_ok=True)
         
@@ -509,6 +631,9 @@ class DocumentConverter:
         
         print(f"{Colors.BOLD}📁 Source folder:{Colors.ENDC}  {Colors.CYAN}{self.source_folder}{Colors.ENDC}")
         print(f"{Colors.BOLD}📂 Output folder:{Colors.ENDC}  {Colors.CYAN}{self.output_folder}{Colors.ENDC}")
+        print(f"{Colors.BOLD}⚡ Workers:{Colors.ENDC}        {Colors.CYAN}{self.max_workers} parallel threads{Colors.ENDC}")
+        if self.use_cache:
+            print(f"{Colors.BOLD}💾 Caching:{Colors.ENDC}       {Colors.GREEN}Enabled{Colors.ENDC}")
         print()
         
         self.print_dependencies()
@@ -524,14 +649,66 @@ class DocumentConverter:
         print(f"{Colors.BOLD}{Colors.GREEN}✓ Found {len(files)} file(s) to convert{Colors.ENDC}")
         print(f"{Colors.DIM}{'─'*70}{Colors.ENDC}\n")
         
-        # Convert each file
-        for idx, file_path in enumerate(files, 1):
-            print(f"{Colors.BOLD}[{idx}/{len(files)}]{Colors.ENDC} {Colors.BOLD}{file_path.name}{Colors.ENDC}")
-            if self.convert_file(file_path):
-                self.stats['converted'] += 1
-            else:
-                self.stats['failed'] += 1
-            print()
+        start_time = time.time()
+        
+        # Convert files in parallel
+        if self.max_workers > 1:
+            print(f"{Colors.BOLD}{Colors.CYAN}⚡ Converting files in parallel...{Colors.ENDC}\n")
+            
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                # Submit all tasks
+                future_to_file = {executor.submit(self._convert_file_worker, f): f for f in files}
+                
+                # Process completed tasks
+                for idx, future in enumerate(as_completed(future_to_file), 1):
+                    file_path = future_to_file[future]
+                    print(f"{Colors.BOLD}[{idx}/{len(files)}]{Colors.ENDC} {Colors.BOLD}{file_path.name}{Colors.ENDC}")
+                    
+                    try:
+                        result, output_path = future.result()
+                        
+                        if result == 'cached':
+                            print(f"  {Colors.CYAN}→ Cached (skipped){Colors.ENDC}")
+                            print(f"  {Colors.GREEN}✓ Using cached:{Colors.ENDC} {Colors.BOLD}{output_path.name}{Colors.ENDC}")
+                            self.stats['cached'] += 1
+                            self.stats['converted'] += 1
+                            self.converted_pdfs.append(output_path)
+                        elif result:
+                            ext = file_path.suffix.lower()
+                            if ext in self.OFFICE_FORMATS:
+                                print(f"  {Colors.CYAN}→ Office document{Colors.ENDC}")
+                            elif ext in self.IMAGE_FORMATS:
+                                print(f"  {Colors.CYAN}→ Image file{Colors.ENDC}")
+                            elif ext in self.TEXT_FORMATS:
+                                print(f"  {Colors.CYAN}→ Text file{Colors.ENDC}")
+                            elif ext in self.PDF_FORMATS:
+                                print(f"  {Colors.CYAN}→ PDF file{Colors.ENDC}")
+                            print(f"  {Colors.GREEN}✓ Saved to:{Colors.ENDC} {Colors.BOLD}{output_path.name}{Colors.ENDC}")
+                            self.stats['converted'] += 1
+                            self.converted_pdfs.append(output_path)
+                        else:
+                            print(f"  {Colors.RED}✗ Conversion failed{Colors.ENDC}")
+                            self.stats['failed'] += 1
+                    except Exception as e:
+                        print(f"  {Colors.RED}✗ Error:{Colors.ENDC} {e}")
+                        self.stats['failed'] += 1
+                    
+                    print()
+        else:
+            # Sequential processing
+            for idx, file_path in enumerate(files, 1):
+                print(f"{Colors.BOLD}[{idx}/{len(files)}]{Colors.ENDC} {Colors.BOLD}{file_path.name}{Colors.ENDC}")
+                if self.convert_file(file_path):
+                    self.stats['converted'] += 1
+                else:
+                    self.stats['failed'] += 1
+                print()
+        
+        elapsed_time = time.time() - start_time
+        
+        # Save cache
+        if self.use_cache:
+            self._save_cache()
         
         # Merge all PDFs if requested
         if self.merge_output and self.converted_pdfs:
@@ -552,10 +729,17 @@ class DocumentConverter:
         total_color = Colors.BLUE
         converted_color = Colors.GREEN if self.stats['converted'] > 0 else Colors.DIM
         failed_color = Colors.RED if self.stats['failed'] > 0 else Colors.DIM
+        cached_color = Colors.CYAN if self.stats['cached'] > 0 else Colors.DIM
         
         print(f"  {Colors.BOLD}Total files:{Colors.ENDC}     {total_color}{self.stats['total']}{Colors.ENDC}")
         print(f"  {Colors.BOLD}Converted:{Colors.ENDC}       {converted_color}{self.stats['converted']}{Colors.ENDC}")
+        if self.stats['cached'] > 0:
+            print(f"  {Colors.BOLD}From cache:{Colors.ENDC}      {cached_color}{self.stats['cached']}{Colors.ENDC}")
         print(f"  {Colors.BOLD}Failed:{Colors.ENDC}          {failed_color}{self.stats['failed']}{Colors.ENDC}")
+        print(f"  {Colors.BOLD}Time:{Colors.ENDC}            {Colors.CYAN}{elapsed_time:.1f}s{Colors.ENDC}")
+        if elapsed_time > 0 and self.stats['converted'] > 0:
+            avg_time = elapsed_time / self.stats['converted']
+            print(f"  {Colors.BOLD}Avg/file:{Colors.ENDC}        {Colors.CYAN}{avg_time:.1f}s{Colors.ENDC}")
         print()
         print(f"{Colors.GREEN}✓ All PDFs saved to:{Colors.ENDC} {Colors.BOLD}{Colors.CYAN}{self.output_folder}{Colors.ENDC}")
         
@@ -566,6 +750,9 @@ class DocumentConverter:
                 print(f"{Colors.BOLD}{Colors.GREEN}🎉 Success!{Colors.ENDC} Upload {Colors.BOLD}merged_all_documents.pdf{Colors.ENDC} to ChatGPT!")
             else:
                 print(f"{Colors.BOLD}{Colors.GREEN}🎉 Done!{Colors.ENDC} {self.stats['converted']} file(s) converted successfully!")
+            
+            if self.max_workers > 1:
+                print(f"{Colors.DIM}⚡ Parallel processing used {self.max_workers} workers{Colors.ENDC}")
         
         print()
 
@@ -581,6 +768,8 @@ Examples:
   %(prog)s /path/to/documents -o /path/to/output
   %(prog)s /path/to/documents --no-ocr
   %(prog)s /path/to/documents --merge
+  %(prog)s /path/to/documents --merge -j 4
+  %(prog)s /path/to/documents --merge --no-cache
   
 Supported formats:
   Office: .pptx, .docx, .doc, .ppt, .xlsx, .xls, .odt, .odp, .ods, .rtf
@@ -617,6 +806,22 @@ Supported formats:
         help='Merge all PDFs into a single output file'
     )
     
+    parser.add_argument(
+        '-j', '--jobs',
+        dest='max_workers',
+        type=int,
+        default=None,
+        help='Number of parallel workers (default: CPU count, max 4)'
+    )
+    
+    parser.add_argument(
+        '--no-cache',
+        dest='use_cache',
+        action='store_false',
+        default=True,
+        help='Disable caching (always reconvert files)'
+    )
+    
     args = parser.parse_args()
     
     # Validate source folder
@@ -631,7 +836,14 @@ Supported formats:
     
     # Convert documents
     output = Path(args.output_folder) if args.output_folder else None
-    converter = DocumentConverter(source, output, args.use_ocr, args.merge_output)
+    converter = DocumentConverter(
+        source_folder=source, 
+        output_folder=output, 
+        use_ocr=args.use_ocr, 
+        merge_output=args.merge_output,
+        max_workers=args.max_workers,
+        use_cache=args.use_cache
+    )
     converter.convert_all()
 
 
