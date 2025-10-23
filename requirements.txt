@@ -2,3 +2,7 @@ Pillow>=10.0.0
 pytesseract>=0.3.10
 PyMuPDF>=1.23.0
 pdf2image>=1.16.3
+
+# Optional AI chat features
+openai>=1.0.0
+google-generativeai>=0.3.0

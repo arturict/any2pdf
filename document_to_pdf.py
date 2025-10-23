@@ -22,6 +22,21 @@ from typing import List, Dict, Tuple
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 from functools import partial
 import time
+import base64
+
+
+# Try to import AI libraries (optional)
+try:
+    import openai
+    OPENAI_AVAILABLE = True
+except ImportError:
+    OPENAI_AVAILABLE = False
+
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
 
 
 # ANSI Color codes
@@ -757,6 +772,317 @@ class DocumentConverter:
         print()
 
 
+class PDFChatSession:
+    """Interactive chat session with PDF using AI."""
+    
+    OPENAI_MODELS = [
+        "gpt-4o",
+        "gpt-4o-mini", 
+        "gpt-4-turbo",
+        "gpt-4",
+        "gpt-3.5-turbo",
+        "o1-preview",
+        "o1-mini"
+    ]
+    
+    GEMINI_MODELS = [
+        "gemini-2.0-flash-exp",
+        "gemini-1.5-pro",
+        "gemini-1.5-flash",
+        "gemini-1.0-pro"
+    ]
+    
+    def __init__(self, pdf_path: Path, provider: str = None, api_key: str = None, model: str = None):
+        """Initialize chat session with PDF."""
+        self.pdf_path = pdf_path
+        self.provider = provider
+        self.api_key = api_key
+        self.model = model
+        self.conversation_history = []
+        
+        if not self.pdf_path.exists():
+            raise FileNotFoundError(f"PDF not found: {self.pdf_path}")
+        
+        # Read PDF content
+        self.pdf_text = self._extract_text_from_pdf()
+        
+        if not self.pdf_text or len(self.pdf_text.strip()) < 50:
+            print(f"{Colors.YELLOW}⚠  Warning: PDF has minimal text content. Chat may be limited.{Colors.ENDC}")
+    
+    def _extract_text_from_pdf(self) -> str:
+        """Extract text content from PDF."""
+        try:
+            import fitz  # PyMuPDF
+            doc = fitz.open(str(self.pdf_path))
+            text = ""
+            for page in doc:
+                text += page.get_text()
+            doc.close()
+            return text
+        except Exception as e:
+            print(f"{Colors.RED}✗ Failed to extract text from PDF:{Colors.ENDC} {e}")
+            return ""
+    
+    def setup_openai(self):
+        """Setup OpenAI API."""
+        if not OPENAI_AVAILABLE:
+            print(f"{Colors.RED}✗ OpenAI library not installed.{Colors.ENDC}")
+            print(f"  Install with: {Colors.CYAN}pip install openai{Colors.ENDC}")
+            return False
+        
+        try:
+            openai.api_key = self.api_key
+            # Test API key
+            client = openai.OpenAI(api_key=self.api_key)
+            client.models.list()
+            return True
+        except Exception as e:
+            print(f"{Colors.RED}✗ OpenAI API key validation failed:{Colors.ENDC} {e}")
+            return False
+    
+    def setup_gemini(self):
+        """Setup Gemini API."""
+        if not GEMINI_AVAILABLE:
+            print(f"{Colors.RED}✗ Gemini library not installed.{Colors.ENDC}")
+            print(f"  Install with: {Colors.CYAN}pip install google-generativeai{Colors.ENDC}")
+            return False
+        
+        try:
+            genai.configure(api_key=self.api_key)
+            # Test API key by listing models
+            list(genai.list_models())
+            return True
+        except Exception as e:
+            print(f"{Colors.RED}✗ Gemini API key validation failed:{Colors.ENDC} {e}")
+            return False
+    
+    def chat_openai(self, user_message: str) -> str:
+        """Send message using OpenAI."""
+        try:
+            client = openai.OpenAI(api_key=self.api_key)
+            
+            # Build messages with PDF context
+            messages = [
+                {
+                    "role": "system",
+                    "content": f"You are a helpful assistant analyzing a PDF document. Here is the content:\n\n{self.pdf_text[:50000]}\n\nAnswer questions about this document."
+                }
+            ]
+            
+            # Add conversation history
+            for msg in self.conversation_history:
+                messages.append(msg)
+            
+            messages.append({"role": "user", "content": user_message})
+            
+            response = client.chat.completions.create(
+                model=self.model,
+                messages=messages
+            )
+            
+            assistant_message = response.choices[0].message.content
+            
+            # Update history
+            self.conversation_history.append({"role": "user", "content": user_message})
+            self.conversation_history.append({"role": "assistant", "content": assistant_message})
+            
+            return assistant_message
+            
+        except Exception as e:
+            return f"Error: {e}"
+    
+    def chat_gemini(self, user_message: str) -> str:
+        """Send message using Gemini."""
+        try:
+            model = genai.GenerativeModel(self.model)
+            
+            # Build conversation with PDF context
+            if not self.conversation_history:
+                # First message includes PDF context
+                prompt = f"You are analyzing this PDF document:\n\n{self.pdf_text[:50000]}\n\nUser question: {user_message}"
+            else:
+                # Subsequent messages include history
+                history_text = "\n".join([
+                    f"{'User' if i % 2 == 0 else 'Assistant'}: {msg}"
+                    for i, msg in enumerate(self.conversation_history)
+                ])
+                prompt = f"Previous conversation:\n{history_text}\n\nUser: {user_message}"
+            
+            response = model.generate_content(prompt)
+            assistant_message = response.text
+            
+            # Update history
+            self.conversation_history.append(user_message)
+            self.conversation_history.append(assistant_message)
+            
+            return assistant_message
+            
+        except Exception as e:
+            return f"Error: {e}"
+    
+    def start_chat(self):
+        """Start interactive chat session."""
+        print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.HEADER}  💬 PDF Chat Session{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}\n")
+        
+        print(f"{Colors.BOLD}📄 PDF:{Colors.ENDC} {Colors.CYAN}{self.pdf_path.name}{Colors.ENDC}")
+        print(f"{Colors.BOLD}🤖 Provider:{Colors.ENDC} {Colors.CYAN}{self.provider.upper()}{Colors.ENDC}")
+        print(f"{Colors.BOLD}🎯 Model:{Colors.ENDC} {Colors.CYAN}{self.model}{Colors.ENDC}")
+        print(f"{Colors.BOLD}📝 PDF Length:{Colors.ENDC} {Colors.CYAN}{len(self.pdf_text)} characters{Colors.ENDC}")
+        print()
+        print(f"{Colors.DIM}Type your questions below. Commands:{Colors.ENDC}")
+        print(f"{Colors.DIM}  • 'exit' or 'quit' to end session{Colors.ENDC}")
+        print(f"{Colors.DIM}  • 'clear' to clear conversation history{Colors.ENDC}")
+        print(f"{Colors.DIM}  • 'help' for assistance{Colors.ENDC}")
+        print(f"{Colors.DIM}{'─'*70}{Colors.ENDC}\n")
+        
+        # Setup provider
+        if self.provider == "openai":
+            if not self.setup_openai():
+                return
+        elif self.provider == "gemini":
+            if not self.setup_gemini():
+                return
+        
+        # Chat loop
+        while True:
+            try:
+                user_input = input(f"{Colors.BOLD}{Colors.BLUE}You:{Colors.ENDC} ").strip()
+                
+                if not user_input:
+                    continue
+                
+                # Handle commands
+                if user_input.lower() in ['exit', 'quit', 'q']:
+                    print(f"\n{Colors.GREEN}👋 Goodbye!{Colors.ENDC}\n")
+                    break
+                
+                if user_input.lower() == 'clear':
+                    self.conversation_history = []
+                    print(f"{Colors.YELLOW}🔄 Conversation history cleared.{Colors.ENDC}\n")
+                    continue
+                
+                if user_input.lower() == 'help':
+                    print(f"\n{Colors.CYAN}Available commands:{Colors.ENDC}")
+                    print(f"  • Ask any question about the PDF")
+                    print(f"  • 'exit' - End chat session")
+                    print(f"  • 'clear' - Clear conversation history")
+                    print(f"  • 'help' - Show this help\n")
+                    continue
+                
+                # Get AI response
+                print(f"{Colors.BOLD}{Colors.GREEN}AI:{Colors.ENDC} ", end="", flush=True)
+                
+                if self.provider == "openai":
+                    response = self.chat_openai(user_input)
+                elif self.provider == "gemini":
+                    response = self.chat_gemini(user_input)
+                else:
+                    response = "Error: Unknown provider"
+                
+                print(response)
+                print()
+                
+            except KeyboardInterrupt:
+                print(f"\n\n{Colors.YELLOW}Chat interrupted. Type 'exit' to quit.{Colors.ENDC}\n")
+                continue
+            except EOFError:
+                print(f"\n{Colors.GREEN}👋 Goodbye!{Colors.ENDC}\n")
+                break
+            except Exception as e:
+                print(f"\n{Colors.RED}✗ Error:{Colors.ENDC} {e}\n")
+
+
+def prompt_for_chat(merged_pdf_path: Path):
+    """Prompt user for AI chat after conversion."""
+    print(f"{Colors.DIM}{'─'*70}{Colors.ENDC}")
+    print(f"{Colors.BOLD}{Colors.CYAN}💬 Would you like to chat with the PDF using AI?{Colors.ENDC}")
+    print()
+    
+    response = input(f"Start chat session? (y/N): ").strip().lower()
+    
+    if response not in ['y', 'yes']:
+        return
+    
+    print()
+    
+    # Check if AI libraries are available
+    if not OPENAI_AVAILABLE and not GEMINI_AVAILABLE:
+        print(f"{Colors.YELLOW}⚠  No AI libraries installed.{Colors.ENDC}")
+        print(f"\nInstall one of:")
+        print(f"  • OpenAI: {Colors.CYAN}pip install openai{Colors.ENDC}")
+        print(f"  • Gemini: {Colors.CYAN}pip install google-generativeai{Colors.ENDC}")
+        return
+    
+    # Select provider
+    print(f"{Colors.BOLD}Select AI provider:{Colors.ENDC}")
+    providers = []
+    if OPENAI_AVAILABLE:
+        providers.append("openai")
+        print(f"  1. OpenAI (GPT-4, GPT-3.5, etc.)")
+    if GEMINI_AVAILABLE:
+        providers.append("gemini")
+        print(f"  {len(providers)}. Google Gemini")
+    
+    if len(providers) == 1:
+        provider = providers[0]
+        print(f"\n{Colors.GREEN}✓ Using {provider.upper()}{Colors.ENDC}")
+    else:
+        provider_choice = input(f"\nChoice (1-{len(providers)}): ").strip()
+        try:
+            provider = providers[int(provider_choice) - 1]
+        except:
+            print(f"{Colors.RED}✗ Invalid choice{Colors.ENDC}")
+            return
+    
+    print()
+    
+    # Select model
+    print(f"{Colors.BOLD}Select model:{Colors.ENDC}")
+    if provider == "openai":
+        models = PDFChatSession.OPENAI_MODELS
+        print(f"{Colors.DIM}Popular OpenAI models:{Colors.ENDC}")
+    else:
+        models = PDFChatSession.GEMINI_MODELS
+        print(f"{Colors.DIM}Popular Gemini models:{Colors.ENDC}")
+    
+    for i, model in enumerate(models, 1):
+        print(f"  {i}. {model}")
+    
+    model_choice = input(f"\nChoice (1-{len(models)}) or enter custom model name: ").strip()
+    
+    try:
+        model = models[int(model_choice) - 1]
+    except:
+        if model_choice:
+            model = model_choice
+        else:
+            model = models[0]
+    
+    print(f"{Colors.GREEN}✓ Using model:{Colors.ENDC} {model}\n")
+    
+    # Get API key
+    print(f"{Colors.BOLD}Enter API key:{Colors.ENDC}")
+    if provider == "openai":
+        print(f"{Colors.DIM}Get your key at: https://platform.openai.com/api-keys{Colors.ENDC}")
+    else:
+        print(f"{Colors.DIM}Get your key at: https://makersuite.google.com/app/apikey{Colors.ENDC}")
+    
+    api_key = input("API Key: ").strip()
+    
+    if not api_key:
+        print(f"{Colors.RED}✗ No API key provided{Colors.ENDC}")
+        return
+    
+    # Start chat session
+    try:
+        chat = PDFChatSession(merged_pdf_path, provider, api_key, model)
+        chat.start_chat()
+    except Exception as e:
+        print(f"{Colors.RED}✗ Failed to start chat:{Colors.ENDC} {e}")
+
+
 def main():
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -845,6 +1171,12 @@ Supported formats:
         use_cache=args.use_cache
     )
     converter.convert_all()
+    
+    # Offer chat session if PDF was merged
+    if args.merge_output and converter.converted_pdfs:
+        merged_pdf = converter.output_folder / "merged_all_documents.pdf"
+        if merged_pdf.exists():
+            prompt_for_chat(merged_pdf)
 
 
 if __name__ == "__main__":

@@ -260,3 +260,78 @@ All PDFs saved to: /home/user/documents/converted_pdfs
 ---
 
 **any2pdf** - Made with ❤️ for the AI community | [GitHub](https://github.com/arturict/any2pdf)
+
+## 💬 AI Chat mit PDF (NEU!)
+
+Nach der Konvertierung mit `--merge` kannst du direkt mit dem generierten PDF chatten!
+
+### Unterstützte AI-Provider
+
+- **OpenAI** (GPT-4, GPT-4o, GPT-3.5, O1, etc.)
+- **Google Gemini** (Gemini 2.0, Gemini 1.5 Pro/Flash, etc.)
+
+### Installation
+
+```bash
+# Für OpenAI
+pip install openai
+
+# Für Gemini
+pip install google-generativeai
+
+# Oder beide
+pip install openai google-generativeai
+```
+
+### Verwendung
+
+```bash
+# Konvertiere und starte Chat
+python document_to_pdf.py /pfad/zu/dateien --merge
+
+# Am Ende wirst du gefragt:
+# "Would you like to chat with the PDF using AI? (y/N)"
+
+# Wähle dann:
+# 1. AI Provider (OpenAI oder Gemini)
+# 2. Modell (z.B. gpt-4o, gemini-2.0-flash-exp)
+# 3. Gib deinen API Key ein
+```
+
+### Chat-Befehle
+
+Im Chat stehen folgende Befehle zur Verfügung:
+
+- **Frage stellen**: Einfach Frage eingeben
+- **`exit`** oder **`quit`**: Chat beenden
+- **`clear`**: Konversationshistorie löschen
+- **`help`**: Hilfe anzeigen
+
+### Beispiel-Session
+
+```
+💬 PDF Chat Session
+══════════════════════════════════════════════════════════════════════
+
+📄 PDF: merged_all_documents.pdf
+�� Provider: OPENAI
+🎯 Model: gpt-4o
+📝 PDF Length: 15420 characters
+
+You: Was sind die Hauptthemen in diesem Dokument?
+
+AI: Basierend auf dem PDF sind die Hauptthemen...
+
+You: Fasse die wichtigsten Punkte zusammen
+
+AI: Die wichtigsten Punkte sind: 1. ...
+
+You: exit
+👋 Goodbye!
+```
+
+### API Keys erhalten
+
+- **OpenAI**: https://platform.openai.com/api-keys
+- **Gemini**: https://makersuite.google.com/app/apikey
+
