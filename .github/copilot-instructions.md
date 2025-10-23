@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**any2pdf** is a Python-based document converter that transforms various file formats into searchable PDFs, optimized for AI tools like ChatGPT. It includes integrated AI chat functionality using OpenAI (GPT-5 series) and Google Gemini models.
+**any2pdf** is a universal document-to-PDF converter with OCR support and AI chat integration. It converts office documents, images, text files, and PDFs into searchable PDFs optimized for AI tools like ChatGPT and Claude. Features interactive CLI with questionary prompts and fallback to traditional argparse mode.
 
 ## Key Components
 
@@ -39,6 +39,8 @@
 - `pdf2image` - PDF to image conversion
 - `openai` - OpenAI API client (optional)
 - `google-generativeai` - Gemini API client (optional)
+- `questionary` - Interactive CLI prompts (optional)
+- `rich` - Terminal UI enhancement (optional)
 
 ## AI Integration Details
 
@@ -87,26 +89,47 @@ The `PDFChatSession` class handles:
 - **Memory Management**: Stream large files, avoid loading everything into memory
 - **OCR Detection**: Check if PDF already has text before applying OCR
 
+## CLI Modes
+
+### Interactive Mode (Default - No Arguments)
+
+Uses `questionary` for beautiful prompts:
+- Directory browser for source/output folders
+- Confirm prompts for OCR/merge/caching options
+- Select lists for workers and AI models
+- Password input for API keys
+- Grouped model selection by series
+
+Example:
+```bash
+python document_to_pdf.py
+# Interactive prompts guide through all options
+```
+
+### Traditional CLI Mode
+
+Falls back to argparse when arguments provided:
+```bash
+python document_to_pdf.py /path/to/docs --merge -j 4
+```
+
 ## File Structure
 
 ```
 any2pdf/
-├── document_to_pdf.py          # Main converter script
+├── document_to_pdf.py          # Main converter + AI chat
 ├── flatten_files.py            # Helper for flattening directories
-├── examples.py                 # Usage examples
-├── test_converter.py           # Dependency checker
 ├── requirements.txt            # Python dependencies
+├── setup.sh                    # System dependencies installer
 ├── CHANGELOG.md                # Version history
-├── README.md                   # Main documentation
+├── README.md                   # Main documentation (German)
 ├── LICENSE                     # MIT License
 ├── docs/                       # Extended documentation
 │   ├── USAGE.md
 │   ├── PERFORMANCE.md
 │   ├── PROJECT_STRUCTURE.md
-│   ├── WSL_SETUP.md
-│   ├── CONTRIBUTING.md
 │   ├── FEATURES.md
-│   └── QUICKSTART.md
+│   └── RELEASE_NOTES_*.md
 └── .github/
     └── copilot-instructions.md # This file
 ```
@@ -154,10 +177,11 @@ Always document Windows-specific instructions with WSL guidance.
   - `Colors.RED` for errors
   - `Colors.CYAN` for info
   - `Colors.BLUE` for headers
-- Use emojis for visual clarity (📄, ✓, ⚡, 🤖, etc.)
+- Use emojis for visual clarity (📄, ✓, ⚡, 🤖, 💬, 🔑, etc.)
 - Show progress indicators for long operations
 - Provide clear error messages with suggested fixes
 - Use separators (═══) for section breaks
+- For interactive mode, use questionary's built-in styling
 
 ## API Key Management
 

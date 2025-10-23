@@ -1,0 +1,11 @@
+This is a demo test file for any2pdf.
+
+It will be converted to a searchable PDF with OCR support.
+
+Features tested:
+- Text file conversion
+- PDF merging
+- Caching system
+- AI chat integration (manual test)
+
+any2pdf makes it easy to convert all your documents for ChatGPT!

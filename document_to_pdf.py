@@ -24,6 +24,24 @@ from functools import partial
 import time
 import base64
 
+# Interactive CLI libraries
+try:
+    import questionary
+    from questionary import Style
+    QUESTIONARY_AVAILABLE = True
+except ImportError:
+    QUESTIONARY_AVAILABLE = False
+
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+    from rich import print as rprint
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+
 
 # Try to import AI libraries (optional)
 try:
@@ -1241,12 +1259,135 @@ def prompt_for_chat(merged_pdf_path: Path):
         print(f"{Colors.RED}✗ Failed to start chat:{Colors.ENDC} {e}")
 
 
+def interactive_mode():
+    """Interactive mode with questionary prompts."""
+    if not QUESTIONARY_AVAILABLE:
+        print(f"{Colors.RED}✗ Questionary not installed. Falling back to standard mode.{Colors.ENDC}")
+        print(f"  Install with: {Colors.CYAN}pip install questionary{Colors.ENDC}\n")
+        return None
+    
+    # Custom style
+    custom_style = Style([
+        ('qmark', 'fg:#673ab7 bold'),
+        ('question', 'bold'),
+        ('answer', 'fg:#f44336 bold'),
+        ('pointer', 'fg:#673ab7 bold'),
+        ('highlighted', 'fg:#673ab7 bold'),
+        ('selected', 'fg:#cc5454'),
+        ('separator', 'fg:#cc5454'),
+        ('instruction', ''),
+        ('text', ''),
+    ])
+    
+    # Welcome
+    print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}")
+    print(f"{Colors.BOLD}{Colors.HEADER}  any2pdf - Interactive Document Converter{Colors.ENDC}")
+    print(f"{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}\n")
+    
+    # Ask for source folder
+    source_path = questionary.path(
+        "📁 Select source folder containing documents:",
+        only_directories=True,
+        style=custom_style
+    ).ask()
+    
+    if not source_path:
+        print(f"\n{Colors.RED}✗ Cancelled{Colors.ENDC}")
+        return None
+    
+    source = Path(source_path).resolve()
+    
+    # Ask for output folder (optional)
+    use_custom_output = questionary.confirm(
+        "📂 Use custom output folder? (default: source_folder/converted_pdfs)",
+        default=False,
+        style=custom_style
+    ).ask()
+    
+    output = None
+    if use_custom_output:
+        output_path = questionary.path(
+            "📂 Select output folder:",
+            only_directories=True,
+            style=custom_style
+        ).ask()
+        if output_path:
+            output = Path(output_path).resolve()
+    
+    # Ask about OCR
+    use_ocr = questionary.confirm(
+        "🔍 Enable OCR for searchable text? (recommended)",
+        default=True,
+        style=custom_style
+    ).ask()
+    
+    # Ask about merging
+    merge_output = questionary.confirm(
+        "🔗 Merge all PDFs into single document?",
+        default=False,
+        style=custom_style
+    ).ask()
+    
+    # Ask about parallel processing
+    cpu_count = os.cpu_count() or 4
+    max_workers_choice = questionary.select(
+        "⚡ Parallel processing workers:",
+        choices=[
+            f"1 worker (sequential)",
+            f"2 workers",
+            f"4 workers (recommended)",
+            f"{cpu_count} workers (max)",
+            "Custom"
+        ],
+        default=f"4 workers (recommended)",
+        style=custom_style
+    ).ask()
+    
+    if "Custom" in max_workers_choice:
+        max_workers = questionary.text(
+            "Enter number of workers:",
+            default="4",
+            validate=lambda x: x.isdigit() and int(x) > 0
+        ).ask()
+        max_workers = int(max_workers)
+    else:
+        max_workers = int(max_workers_choice.split()[0])
+    
+    # Ask about caching
+    use_cache = questionary.confirm(
+        "💾 Enable smart caching? (skip already converted files)",
+        default=True,
+        style=custom_style
+    ).ask()
+    
+    print()
+    
+    return {
+        'source_folder': source,
+        'output_folder': output,
+        'use_ocr': use_ocr,
+        'merge_output': merge_output,
+        'max_workers': max_workers,
+        'use_cache': use_cache
+    }
+
+
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description='Convert documents to searchable PDFs for AI analysis',
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
+    # Check if running in interactive mode (no arguments)
+    if len(sys.argv) == 1 and QUESTIONARY_AVAILABLE:
+        # Interactive mode
+        config = interactive_mode()
+        if not config:
+            sys.exit(0)
+        
+        source = config['source_folder']
+    else:
+        # Traditional CLI mode
+        parser = argparse.ArgumentParser(
+            description='Convert documents to searchable PDFs for AI analysis',
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+            epilog="""
 Examples:
   %(prog)s /path/to/documents
   %(prog)s /path/to/documents -o /path/to/output
@@ -1255,83 +1396,99 @@ Examples:
   %(prog)s /path/to/documents --merge -j 4
   %(prog)s /path/to/documents --merge --no-cache
   
+Interactive mode:
+  %(prog)s     (run without arguments for interactive prompts)
+  
 Supported formats:
   Office: .pptx, .docx, .doc, .ppt, .xlsx, .xls, .odt, .odp, .ods, .rtf
   Images: .jpg, .jpeg, .png, .gif, .bmp, .tiff, .tif, .webp, .svg, .heic
   Text: .txt, .md, .csv, .tsv, .log, .json, .xml, .html, .htm
   PDF: .pdf (will be copied and optionally OCR'd)
-        """
-    )
-    
-    parser.add_argument(
-        'source_folder',
-        help='Path to folder containing documents to convert'
-    )
-    
-    parser.add_argument(
-        '-o', '--output',
-        dest='output_folder',
-        help='Output folder for PDFs (default: source_folder/converted_pdfs)'
-    )
-    
-    parser.add_argument(
-        '--no-ocr',
-        dest='use_ocr',
-        action='store_false',
-        default=True,
-        help='Disable OCR (faster but PDFs won\'t be searchable)'
-    )
-    
-    parser.add_argument(
-        '-m', '--merge',
-        dest='merge_output',
-        action='store_true',
-        default=False,
-        help='Merge all PDFs into a single output file'
-    )
-    
-    parser.add_argument(
-        '-j', '--jobs',
-        dest='max_workers',
-        type=int,
-        default=None,
-        help='Number of parallel workers (default: CPU count, max 4)'
-    )
-    
-    parser.add_argument(
-        '--no-cache',
-        dest='use_cache',
-        action='store_false',
-        default=True,
-        help='Disable caching (always reconvert files)'
-    )
-    
-    args = parser.parse_args()
-    
-    # Validate source folder
-    source = Path(args.source_folder)
-    if not source.exists():
-        print(f"Error: Source folder '{source}' does not exist!")
-        sys.exit(1)
-    
-    if not source.is_dir():
-        print(f"Error: '{source}' is not a directory!")
-        sys.exit(1)
+            """
+        )
+        
+        parser.add_argument(
+            'source_folder',
+            nargs='?',
+            help='Path to folder containing documents to convert'
+        )
+        
+        parser.add_argument(
+            '-o', '--output',
+            dest='output_folder',
+            help='Output folder for PDFs (default: source_folder/converted_pdfs)'
+        )
+        
+        parser.add_argument(
+            '--no-ocr',
+            dest='use_ocr',
+            action='store_false',
+            default=True,
+            help='Disable OCR (faster but PDFs won\'t be searchable)'
+        )
+        
+        parser.add_argument(
+            '-m', '--merge',
+            dest='merge_output',
+            action='store_true',
+            default=False,
+            help='Merge all PDFs into a single output file'
+        )
+        
+        parser.add_argument(
+            '-j', '--jobs',
+            dest='max_workers',
+            type=int,
+            default=None,
+            help='Number of parallel workers (default: CPU count, max 4)'
+        )
+        
+        parser.add_argument(
+            '--no-cache',
+            dest='use_cache',
+            action='store_false',
+            default=True,
+            help='Disable caching (always reconvert files)'
+        )
+        
+        args = parser.parse_args()
+        
+        # If no source folder provided, try interactive mode
+        if not args.source_folder:
+            if QUESTIONARY_AVAILABLE:
+                config = interactive_mode()
+                if not config:
+                    sys.exit(0)
+                source = config['source_folder']
+            else:
+                parser.print_help()
+                sys.exit(1)
+        else:
+            # Validate source folder
+            source = Path(args.source_folder)
+            if not source.exists():
+                print(f"Error: Source folder '{source}' does not exist!")
+                sys.exit(1)
+            
+            if not source.is_dir():
+                print(f"Error: '{source}' is not a directory!")
+                sys.exit(1)
+            
+            config = {
+                'source_folder': source,
+                'output_folder': Path(args.output_folder) if args.output_folder else None,
+                'use_ocr': args.use_ocr,
+                'merge_output': args.merge_output,
+                'max_workers': args.max_workers,
+                'use_cache': args.use_cache
+            }
     
     # Convert documents
-    output = Path(args.output_folder) if args.output_folder else None
-    converter = DocumentConverter(
-        source_folder=source, 
-        output_folder=output, 
-        use_ocr=args.use_ocr, 
-        merge_output=args.merge_output,
-        max_workers=args.max_workers,
-        use_cache=args.use_cache
-    )
+    converter = DocumentConverter(**config)
     converter.convert_all()
     
     # Offer chat session if PDF was merged
-    if args.merge_output and converter.converted_pdfs:
+    if config['merge_output'] and converter.converted_pdfs:
         merged_pdf = converter.output_folder / "merged_all_documents.pdf"
         if merged_pdf.exists():
             prompt_for_chat(merged_pdf)
