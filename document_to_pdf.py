@@ -14,6 +14,40 @@ from pathlib import Path
 from typing import List, Dict, Tuple
 
 
+# ANSI Color codes
+class Colors:
+    """ANSI color codes for terminal output."""
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+    UNDERLINE = '\033[4m'
+    
+    @staticmethod
+    def disable():
+        """Disable colors (for piped output)."""
+        Colors.HEADER = ''
+        Colors.BLUE = ''
+        Colors.CYAN = ''
+        Colors.GREEN = ''
+        Colors.YELLOW = ''
+        Colors.RED = ''
+        Colors.ENDC = ''
+        Colors.BOLD = ''
+        Colors.DIM = ''
+        Colors.UNDERLINE = ''
+
+
+# Check if output is being piped
+if not sys.stdout.isatty():
+    Colors.disable()
+
+
 class DocumentConverter:
     """Main converter class for handling various document formats."""
     
@@ -70,12 +104,25 @@ class DocumentConverter:
         return available
     
     def print_dependencies(self):
-        """Print dependency status."""
-        print("Dependency Check:")
-        print(f"  LibreOffice:     {'✓' if self.deps['libreoffice'] else '✗ (required for Office docs)'}")
-        print(f"  Tesseract OCR:   {'✓' if self.deps['tesseract'] else '✗ (optional, for OCR)'}")
-        print(f"  Poppler:         {'✓' if self.deps['pdftoppm'] else '✗ (optional, for OCR)'}")
-        print(f"  ImageMagick:     {'✓' if self.deps['convert'] else '✗ (optional, for images)'}")
+        """Print dependency status with colors."""
+        print(f"{Colors.BOLD}{Colors.CYAN}🔍 Dependency Check:{Colors.ENDC}")
+        
+        deps_status = [
+            ('LibreOffice', self.deps['libreoffice'], 'required for Office docs'),
+            ('Tesseract OCR', self.deps['tesseract'], 'optional, for OCR'),
+            ('Poppler', self.deps['pdftoppm'], 'optional, for OCR'),
+            ('ImageMagick', self.deps['convert'], 'optional, for images')
+        ]
+        
+        for name, available, description in deps_status:
+            if available:
+                icon = f"{Colors.GREEN}✓{Colors.ENDC}"
+                status = f"{Colors.GREEN}installed{Colors.ENDC}"
+            else:
+                icon = f"{Colors.RED}✗{Colors.ENDC}"
+                status = f"{Colors.DIM}not found{Colors.ENDC}"
+            
+            print(f"  {icon} {Colors.BOLD}{name:15s}{Colors.ENDC} {status} {Colors.DIM}({description}){Colors.ENDC}")
         print()
     
     def collect_files(self) -> List[Path]:
@@ -103,7 +150,7 @@ class DocumentConverter:
             True if successful, False otherwise
         """
         if not self.deps['libreoffice']:
-            print(f"  ✗ LibreOffice not installed, cannot convert {file_path.name}")
+            print(f"  {Colors.RED}✗ LibreOffice not installed{Colors.ENDC}, cannot convert {file_path.name}")
             return False
         
         # LibreOffice outputs to the specified directory with the same name
@@ -141,14 +188,14 @@ class DocumentConverter:
                     expected_pdf.rename(output_path)
                 return True
             else:
-                print(f"  ✗ LibreOffice failed to create PDF for {file_path.name}")
+                print(f"  {Colors.RED}✗ LibreOffice failed{Colors.ENDC} to create PDF for {file_path.name}")
                 return False
                 
         except subprocess.TimeoutExpired:
-            print(f"  ✗ Timeout converting {file_path.name}")
+            print(f"  {Colors.YELLOW}⏱ Timeout{Colors.ENDC} converting {file_path.name}")
             return False
         except Exception as e:
-            print(f"  ✗ Error converting {file_path.name}: {e}")
+            print(f"  {Colors.RED}✗ Error:{Colors.ENDC} {e}")
             return False
     
     def convert_image_to_pdf(self, image_path: Path, output_path: Path) -> bool:
@@ -267,10 +314,10 @@ class DocumentConverter:
             return True
             
         except ImportError:
-            print(f"  ✗ PyMuPDF not installed, cannot convert {text_path.name}")
+            print(f"  {Colors.YELLOW}⚠  PyMuPDF not installed{Colors.ENDC}, cannot convert {text_path.name}")
             return False
         except Exception as e:
-            print(f"  ✗ Failed to convert {text_path.name}: {e}")
+            print(f"  {Colors.RED}✗ Failed:{Colors.ENDC} {e}")
             return False
     
     def copy_pdf(self, pdf_path: Path, output_path: Path) -> bool:
@@ -296,7 +343,7 @@ class DocumentConverter:
             return True
             
         except Exception as e:
-            print(f"  ✗ Failed to copy {pdf_path.name}: {e}")
+            print(f"  {Colors.RED}✗ Failed:{Colors.ENDC} {e}")
             return False
     
     def merge_pdfs(self, pdf_paths: List[Path], output_path: Path) -> bool:
@@ -316,14 +363,18 @@ class DocumentConverter:
             # Create new PDF
             merged_pdf = fitz.open()
             
-            # Add each PDF
-            for pdf_path in pdf_paths:
+            # Add each PDF with progress
+            for idx, pdf_path in enumerate(pdf_paths, 1):
                 try:
+                    print(f"  {Colors.DIM}[{idx}/{len(pdf_paths)}]{Colors.ENDC} {pdf_path.name}", end='\r')
                     pdf_doc = fitz.open(str(pdf_path))
                     merged_pdf.insert_pdf(pdf_doc)
                     pdf_doc.close()
                 except Exception as e:
-                    print(f"  ⚠ Failed to add {pdf_path.name}: {e}")
+                    print(f"\n  {Colors.YELLOW}⚠  Failed to add {pdf_path.name}:{Colors.ENDC} {e}")
+            
+            # Clear progress line
+            print(" " * 80, end='\r')
             
             # Save merged PDF
             merged_pdf.save(str(output_path))
@@ -332,10 +383,10 @@ class DocumentConverter:
             return True
             
         except ImportError:
-            print("  ✗ PyMuPDF not installed, cannot merge PDFs")
+            print(f"  {Colors.RED}✗ PyMuPDF not installed{Colors.ENDC}, cannot merge PDFs")
             return False
         except Exception as e:
-            print(f"  ✗ Failed to merge PDFs: {e}")
+            print(f"  {Colors.RED}✗ Failed to merge:{Colors.ENDC} {e}")
             return False
     
     def apply_ocr_to_pdf(self, pdf_path: Path) -> bool:
@@ -391,7 +442,7 @@ class DocumentConverter:
         except ImportError:
             return False
         except Exception as e:
-            print(f"  ⚠ OCR failed: {e}")
+            print(f"  {Colors.YELLOW}⚠  OCR failed:{Colors.ENDC} {e}")
             return False
     
     def convert_file(self, file_path: Path) -> bool:
@@ -425,19 +476,23 @@ class DocumentConverter:
         success = False
         
         if ext in self.OFFICE_FORMATS:
+            print(f"  {Colors.CYAN}→ Office document{Colors.ENDC}")
             success = self.convert_office_to_pdf(file_path, output_path)
             if success and self.use_ocr and self.deps['tesseract'] and self.deps['pdftoppm']:
-                print(f"  Applying OCR...")
+                print(f"  {Colors.YELLOW}→ Applying OCR...{Colors.ENDC}")
                 self.apply_ocr_to_pdf(output_path)
         elif ext in self.IMAGE_FORMATS:
+            print(f"  {Colors.CYAN}→ Image file{Colors.ENDC}")
             success = self.convert_image_to_pdf(file_path, output_path)
         elif ext in self.TEXT_FORMATS:
+            print(f"  {Colors.CYAN}→ Text file{Colors.ENDC}")
             success = self.convert_text_to_pdf(file_path, output_path)
         elif ext in self.PDF_FORMATS:
+            print(f"  {Colors.CYAN}→ PDF file{Colors.ENDC}")
             success = self.copy_pdf(file_path, output_path)
         
         if success:
-            print(f"  ✓ Saved to: {output_path.name}")
+            print(f"  {Colors.GREEN}✓ Saved to:{Colors.ENDC} {Colors.BOLD}{output_path.name}{Colors.ENDC}")
             self.converted_pdfs.append(output_path)
         
         return success
@@ -447,8 +502,13 @@ class DocumentConverter:
         # Create output directory
         self.output_folder.mkdir(parents=True, exist_ok=True)
         
-        print(f"Source folder: {self.source_folder}")
-        print(f"Output folder: {self.output_folder}")
+        # Print header
+        print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.HEADER}  any2pdf - Universal Document to PDF Converter{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}\n")
+        
+        print(f"{Colors.BOLD}📁 Source folder:{Colors.ENDC}  {Colors.CYAN}{self.source_folder}{Colors.ENDC}")
+        print(f"{Colors.BOLD}📂 Output folder:{Colors.ENDC}  {Colors.CYAN}{self.output_folder}{Colors.ENDC}")
         print()
         
         self.print_dependencies()
@@ -458,14 +518,15 @@ class DocumentConverter:
         self.stats['total'] = len(files)
         
         if not files:
-            print("No convertible files found.")
+            print(f"{Colors.YELLOW}⚠  No convertible files found.{Colors.ENDC}")
             return
         
-        print(f"Found {len(files)} files to convert")
-        print("=" * 60)
+        print(f"{Colors.BOLD}{Colors.GREEN}✓ Found {len(files)} file(s) to convert{Colors.ENDC}")
+        print(f"{Colors.DIM}{'─'*70}{Colors.ENDC}\n")
         
         # Convert each file
-        for file_path in files:
+        for idx, file_path in enumerate(files, 1):
+            print(f"{Colors.BOLD}[{idx}/{len(files)}]{Colors.ENDC} {Colors.BOLD}{file_path.name}{Colors.ENDC}")
             if self.convert_file(file_path):
                 self.stats['converted'] += 1
             else:
@@ -474,22 +535,39 @@ class DocumentConverter:
         
         # Merge all PDFs if requested
         if self.merge_output and self.converted_pdfs:
-            print("=" * 60)
-            print("Merging all PDFs into single document...")
+            print(f"{Colors.DIM}{'─'*70}{Colors.ENDC}")
+            print(f"{Colors.BOLD}{Colors.CYAN}🔗 Merging all PDFs into single document...{Colors.ENDC}")
             merged_path = self.output_folder / "merged_all_documents.pdf"
             if self.merge_pdfs(self.converted_pdfs, merged_path):
-                print(f"✓ Merged PDF saved to: {merged_path}")
+                print(f"{Colors.GREEN}✓ Merged PDF saved to:{Colors.ENDC} {Colors.BOLD}{merged_path.name}{Colors.ENDC}")
             else:
-                print("✗ Failed to merge PDFs")
+                print(f"{Colors.RED}✗ Failed to merge PDFs{Colors.ENDC}")
             print()
         
         # Print summary
-        print("=" * 60)
-        print("Conversion Summary:")
-        print(f"  Total files:     {self.stats['total']}")
-        print(f"  Converted:       {self.stats['converted']}")
-        print(f"  Failed:          {self.stats['failed']}")
-        print(f"\nAll PDFs saved to: {self.output_folder}")
+        print(f"{Colors.DIM}{'='*70}{Colors.ENDC}")
+        print(f"{Colors.BOLD}{Colors.HEADER}📊 Conversion Summary{Colors.ENDC}")
+        print(f"{Colors.DIM}{'='*70}{Colors.ENDC}")
+        
+        total_color = Colors.BLUE
+        converted_color = Colors.GREEN if self.stats['converted'] > 0 else Colors.DIM
+        failed_color = Colors.RED if self.stats['failed'] > 0 else Colors.DIM
+        
+        print(f"  {Colors.BOLD}Total files:{Colors.ENDC}     {total_color}{self.stats['total']}{Colors.ENDC}")
+        print(f"  {Colors.BOLD}Converted:{Colors.ENDC}       {converted_color}{self.stats['converted']}{Colors.ENDC}")
+        print(f"  {Colors.BOLD}Failed:{Colors.ENDC}          {failed_color}{self.stats['failed']}{Colors.ENDC}")
+        print()
+        print(f"{Colors.GREEN}✓ All PDFs saved to:{Colors.ENDC} {Colors.BOLD}{Colors.CYAN}{self.output_folder}{Colors.ENDC}")
+        
+        # Success banner
+        if self.stats['converted'] > 0:
+            print()
+            if self.merge_output and self.converted_pdfs:
+                print(f"{Colors.BOLD}{Colors.GREEN}🎉 Success!{Colors.ENDC} Upload {Colors.BOLD}merged_all_documents.pdf{Colors.ENDC} to ChatGPT!")
+            else:
+                print(f"{Colors.BOLD}{Colors.GREEN}🎉 Done!{Colors.ENDC} {self.stats['converted']} file(s) converted successfully!")
+        
+        print()
 
 
 def main():
