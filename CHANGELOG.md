@@ -1,5 +1,41 @@
 # Changelog
 
+## Version 1.4.0 (October 2025)
+
+### ✨ Interactive CLI Mode
+
+#### New Features
+- **🎯 Interactive Prompts**: Run without arguments for guided setup using `questionary`
+  - Directory browser for source/output folders
+  - Confirm prompts for OCR, merge, caching options
+  - Select lists for parallel workers (1-4+)
+  - Beautiful color-coded UI with emojis
+- **🔄 Dual Mode Support**: Falls back to traditional argparse CLI when arguments provided
+- **🤖 Enhanced AI Chat UX**:
+  - Grouped model selection by series (GPT-5, GPT-4.1, Gemini 2.5, etc.)
+  - Password input for API keys (hidden characters)
+  - Interactive reasoning effort selection for GPT-5
+  - Better provider selection with questionary
+- **📚 Cleaner Documentation**:
+  - Removed redundant docs (WSL_SETUP, CONTRIBUTING, QUICKSTART, SUMMARY)
+  - Updated `.github/copilot-instructions.md` with CLI modes
+  - All unnecessary files moved to `docs/` folder
+
+#### Dependencies
+- Added `questionary>=2.0.0` for interactive prompts
+- Added `rich>=13.0.0` for enhanced terminal UI (optional)
+
+#### Usage
+```bash
+# Interactive mode (new!)
+python document_to_pdf.py
+
+# Traditional CLI mode (still works)
+python document_to_pdf.py /path/to/docs --merge -j 4
+```
+
+---
+
 ## Version 1.3.1 (October 2025)
 
 ### 🎯 Documentation & Structure Overhaul
