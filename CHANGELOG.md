@@ -1,6 +1,6 @@
 # Changelog
 
-## Version 1.3.0 (October 2025)
+## Version 1.3.1 (October 2025)
 
 ### 🎯 Documentation & Structure Overhaul
 
