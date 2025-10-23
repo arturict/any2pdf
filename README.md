@@ -1,4 +1,6 @@
-# Document to PDF Converter
+# any2pdf 📄→📑
+
+> **Convert ANY file format to searchable PDFs - Perfect for ChatGPT & AI Tools!**
 
 Ein Python-Tool zur Konvertierung von verschiedensten Dateiformaten in durchsuchbare PDFs für die Verwendung mit KI-Tools wie ChatGPT.
 
@@ -224,3 +226,7 @@ Conversion Summary:
 
 All PDFs saved to: /home/user/documents/converted_pdfs
 ```
+
+---
+
+**any2pdf** - Made with ❤️ for the AI community | [GitHub](https://github.com/arturict/any2pdf)

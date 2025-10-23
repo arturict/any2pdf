@@ -1,4 +1,4 @@
-# Document to PDF Converter - Feature Summary
+# any2pdf - Feature Summary
 
 ## 🎯 Hauptziel
 
@@ -167,3 +167,5 @@ Keine! Alle bestehenden Funktionen bleiben erhalten. Neue Features sind optional
 ## 🙏 Feedback
 
 Dieses Tool ist jetzt ein generisches, robustes Werkzeug für die Konvertierung verschiedenster Dateiformate in durchsuchbare PDFs - perfekt für die Verwendung mit modernen KI-Tools!
+
+**any2pdf** - [GitHub](https://github.com/arturict/any2pdf) | Made with ❤️ for the AI community
