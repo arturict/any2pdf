@@ -1,5 +1,24 @@
 # Changelog
 
+## Version 1.3.0 (October 2025)
+
+### 🎯 Documentation & Structure
+#### Documentation Reorganization
+- **Cleaner Root Directory**: Moved less critical docs to `docs/` folder
+- **Essential Files Only**: Kept README, QUICKSTART, WSL_SETUP, FEATURES, CONTRIBUTING, CHANGELOG in root
+- **Better Navigation**: More intuitive project structure
+
+#### GitHub Copilot Integration
+- **Comprehensive AI Agent Instructions**: Added `.github/copilot-instructions.md`
+  - Complete project architecture overview
+  - AI integration details (OpenAI GPT-5, Google Gemini)
+  - Development guidelines and best practices
+  - Common tasks and troubleshooting guides
+  - Testing strategies and security considerations
+- **Better AI Assistance**: Optimized for AI coding assistants like GitHub Copilot
+
+---
+
 ## Version 2.0 (Oktober 2024)
 
 ### 🎉 Neue Features
