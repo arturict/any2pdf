@@ -776,31 +776,51 @@ class PDFChatSession:
     """Interactive chat session with PDF using AI."""
     
     OPENAI_MODELS = [
-        # Latest models (as of October 2025)
-        "gpt-4o",                    # Latest GPT-4 Omni
-        "gpt-4o-mini",              # Faster, cost-effective
+        # GPT-5 Series (Latest - October 2025)
+        "gpt-5",                     # Best for complex reasoning, coding & agentic tasks
+        "gpt-5-mini",               # Cost-optimized reasoning, balances speed & capability
+        "gpt-5-nano",               # High-throughput, simple instruction-following
+        "gpt-5-chat-latest",        # GPT-5 main (non-reasoning variant)
+        
+        # GPT-4.1 Series
+        "gpt-4.1",                  # Smartest non-reasoning model
+        "gpt-4.1-mini",             # Cost-effective GPT-4.1
+        "gpt-4.1-nano",             # Fast, lightweight GPT-4.1
+        
+        # O-Series (Previous generation reasoning)
+        "o4-mini",                  # Fast reasoning (superseded by GPT-5 mini)
+        "o3",                       # Previous reasoning model
+        
+        # Legacy GPT-4
+        "gpt-4o",                   # GPT-4 Omni
+        "gpt-4o-mini",              # Smaller GPT-4 Omni
         "gpt-4-turbo",              # GPT-4 Turbo
-        "o1",                        # Reasoning model
-        "o1-mini",                  # Smaller reasoning model
-        "o1-preview",               # Preview of O1
         "gpt-4",                    # Standard GPT-4
-        "gpt-4-32k",                # GPT-4 with 32k context
-        "gpt-3.5-turbo",            # Legacy fast model
-        "gpt-3.5-turbo-16k"         # Legacy with 16k context
+        "gpt-3.5-turbo"             # Legacy model
     ]
     
     GEMINI_MODELS = [
-        # Latest models (as of October 2025)
-        "gemini-2.0-flash-exp",           # Latest experimental
-        "gemini-2.0-flash-thinking-exp",  # Thinking mode
-        "gemini-exp-1206",                # Experimental Dec 2024
-        "gemini-exp-1121",                # Experimental Nov 2024
-        "gemini-1.5-pro-latest",          # Latest 1.5 Pro
-        "gemini-1.5-pro",                 # 1.5 Pro stable
-        "gemini-1.5-flash-latest",        # Latest 1.5 Flash
-        "gemini-1.5-flash",               # 1.5 Flash stable
-        "gemini-1.5-flash-8b",            # Smaller 1.5 Flash
-        "gemini-1.0-pro"                  # Legacy 1.0
+        # Gemini 2.5 Series (Latest - October 2025)
+        "gemini-2.5-flash",              # Latest stable 2.5 Flash
+        "gemini-2.5-pro",                # Latest stable 2.5 Pro
+        
+        # Gemini 2.0 Series
+        "gemini-2.0-flash-exp",          # Experimental 2.0 Flash
+        "gemini-2.0-flash-thinking-exp", # 2.0 with thinking mode
+        
+        # Gemini 1.5 Series
+        "gemini-1.5-pro-latest",         # Latest 1.5 Pro
+        "gemini-1.5-pro",                # Stable 1.5 Pro
+        "gemini-1.5-flash-latest",       # Latest 1.5 Flash
+        "gemini-1.5-flash",              # Stable 1.5 Flash
+        "gemini-1.5-flash-8b",           # Smaller 1.5 Flash
+        
+        # Experimental models
+        "gemini-exp-1206",               # Experimental Dec 2024
+        "gemini-exp-1121",               # Experimental Nov 2024
+        
+        # Legacy
+        "gemini-1.0-pro"                 # Legacy 1.0
     ]
     
     def __init__(self, pdf_path: Path, provider: str = None, api_key: str = None, model: str = None):

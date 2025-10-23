@@ -267,8 +267,15 @@ Nach der Konvertierung mit `--merge` kannst du direkt mit dem generierten PDF ch
 
 ### Unterstützte AI-Provider
 
-- **OpenAI** (GPT-4, GPT-4o, GPT-3.5, O1, etc.)
-- **Google Gemini** (Gemini 2.0, Gemini 1.5 Pro/Flash, etc.)
+- **OpenAI** - Neueste Modelle (Oktober 2025):
+  - **GPT-5 Serie**: `gpt-5` (bester für Coding & Reasoning), `gpt-5-mini`, `gpt-5-nano`
+  - **GPT-4.1 Serie**: `gpt-4.1` (schnellstes non-reasoning), `gpt-4.1-mini`, `gpt-4.1-nano`
+  - **Legacy**: GPT-4o, O4-mini, O3, GPT-4 Turbo, GPT-3.5
+
+- **Google Gemini** - Neueste Modelle (Oktober 2025):
+  - **Gemini 2.5**: `gemini-2.5-flash`, `gemini-2.5-pro` (neueste stabile Versionen)
+  - **Gemini 2.0**: `gemini-2.0-flash-exp`, `gemini-2.0-flash-thinking-exp`
+  - **Gemini 1.5**: `gemini-1.5-pro`, `gemini-1.5-flash`, `gemini-1.5-flash-8b`
 
 ### Installation
 
