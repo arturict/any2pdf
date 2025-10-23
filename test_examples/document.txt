@@ -1,0 +1,12 @@
+Test Document
+=============
+
+This is a test document for any2pdf.
+
+Features:
+- Multiple format support
+- OCR capabilities
+- AI chat integration
+- GPT-5 reasoning control
+
+Perfect for converting documents to searchable PDFs!

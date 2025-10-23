@@ -1,0 +1,8 @@
+Feature,Status,Provider
+Document Conversion,Active,N/A
+AI Chat,Active,OpenAI
+AI Chat,Active,Gemini
+GPT-5 Support,Active,OpenAI
+Reasoning Control,Active,OpenAI
+Multi-threading,Active,N/A
+Smart Caching,Active,N/A

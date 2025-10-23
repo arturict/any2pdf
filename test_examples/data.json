@@ -1,0 +1,15 @@
+{
+  "project": "any2pdf",
+  "version": "1.2.0",
+  "features": [
+    "Document conversion",
+    "AI chat integration",
+    "GPT-5 support",
+    "Gemini 2.5 support",
+    "Reasoning control"
+  ],
+  "providers": {
+    "openai": ["gpt-5", "gpt-5-mini", "gpt-4.1"],
+    "gemini": ["gemini-2.5-flash", "gemini-2.5-pro"]
+  }
+}

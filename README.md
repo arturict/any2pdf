@@ -13,6 +13,8 @@ Ein Python-Tool zur Konvertierung von verschiedensten Dateiformaten in durchsuch
 - 🔍 **OCR**: Macht alle Dokumente durchsuchbar mit Texterkennung (Deutsch & Englisch)
 - 📁 **Batch-Verarbeitung**: Verarbeitet ganze Ordner mit Unterordnern
 - 🔗 **PDF-Zusammenführung**: Optional alle PDFs in einem Dokument zusammenführen
+- 🤖 **AI Chat Integration**: Chatte mit deinen PDFs über OpenAI (GPT-5, GPT-4.1) oder Google Gemini (2.5-Pro, 2.0)
+- 🧠 **GPT-5 Reasoning Control**: Wähle Reasoning Effort (minimal/low/medium/high) für optimale Balance zwischen Speed & Quality
 - ⚡ **Parallel Processing**: 50-70% schneller durch Multi-Threading
 - 💾 **Smart Caching**: Überspringe bereits konvertierte Dateien automatisch
 - 🚀 **Einfach zu bedienen**: Ein Befehl für alles
@@ -86,6 +88,10 @@ python document_to_pdf.py /pfad/zum/ordner --merge --no-cache
 # Unterrichtsmaterialien konvertieren und zusammenführen
 python document_to_pdf.py ./documents --merge
 
+# Mit AI Chat (OpenAI GPT-5 oder Google Gemini)
+python document_to_pdf.py ./documents --merge
+# Nach der Konvertierung wirst du gefragt, ob du chatten möchtest
+
 # Schnelle Konvertierung ohne OCR
 python document_to_pdf.py ./documents --no-ocr
 
@@ -97,21 +103,100 @@ python document_to_pdf.py ./flattened_files -o ./output --merge
 python document_to_pdf.py --help
 ```
 
-## Workflow für ChatGPT
+## AI Chat Integration 🤖
+
+Nach der PDF-Erstellung kannst du direkt mit deinen Dokumenten chatten:
+
+### Unterstützte AI Provider:
+
+**OpenAI (GPT-5 Series)**
+- `gpt-5` - Neuestes Modell mit reasoning capabilities
+- `gpt-5-mini` - Schneller & günstiger
+- `gpt-5-nano` - Sehr schnell für einfache Fragen
+- `gpt-4.1`, `gpt-4.1-mini`, `o4-mini`, `o3` - Legacy Modelle
+
+**Google Gemini**
+- `gemini-2.5-flash` - Neuestes Gemini
+- `gemini-2.5-pro` - Beste Qualität
+- `gemini-2.0-flash-exp`, `gemini-2.0-flash-thinking-exp`
+- `gemini-1.5-pro`, `gemini-1.5-flash` - Legacy Modelle
+
+### GPT-5 Reasoning Effort Control 🧠
+
+Bei GPT-5 Modellen kannst du die Reasoning-Tiefe wählen:
+
+- **minimal** - ⚡⚡⚡⚡⚡ Schnellste Antworten (einfache Fragen)
+- **low** - ⚡⚡⚡⚡ Schnelles Reasoning (direkte Fragen)
+- **medium** - ⚡⚡⚡ Ausgewogen (DEFAULT, empfohlen)
+- **high** - ⚡⚡ Tiefes Reasoning (komplexe Code-Analyse)
+
+### Chat-Beispiel:
+
+```bash
+python document_to_pdf.py ./documents --merge
+
+# Nach der Konvertierung:
+💬 Would you like to chat with the PDF using AI? (y/N): y
+
+Select AI provider:
+  1. OpenAI (GPT-5, GPT-4.1, etc.)
+  2. Google Gemini
+Choice: 1
+
+Enter API key: sk-...
+
+Available models:
+  GPT-5 Series (Latest):
+    1. gpt-5
+    2. gpt-5-mini
+  ...
+Choice: 1
+
+🧠 Select reasoning effort for gpt-5:
+  1. minimal  - Fastest
+  2. low      - Quick reasoning
+  3. medium   - Balanced (default)
+  4. high     - Deep reasoning
+Choice (1-4): 3
+
+═══════════════════════════════════════
+  💬 PDF Chat Session
+═══════════════════════════════════════
+📄 PDF: merged_all_documents.pdf
+🤖 Provider: OPENAI
+🎯 Model: gpt-5
+🧠 Reasoning: medium
+📝 PDF Length: 15420 characters
+
+You: Was sind die Hauptthemen in diesem Dokument?
+AI: Die Hauptthemen sind...
+```
+
+## Workflow für ChatGPT / AI Tools
 
 1. **Dateien sammeln und konvertieren:**
    ```bash
    python document_to_pdf.py ./unterrichtsmaterial --merge
    ```
 
-2. **Einzelnes PDF an ChatGPT hochladen:**
-   - Das zusammengeführte PDF `merged_all_documents.pdf` hochladen
+2. **Option A - Integrierter Chat:**
+   - Nach der Konvertierung `y` eingeben
+   - Provider wählen (OpenAI/Gemini)
+   - API Key eingeben
+   - Modell wählen
+   - Bei GPT-5: Reasoning Effort wählen
+   - Direkt chatten!
+
+3. **Option B - PDF hochladen:**
+   - Das zusammengeführte PDF `merged_all_documents.pdf` zu ChatGPT/Claude hochladen
    - Text ist durchsuchbar und kann analysiert werden
 
-3. **Mit ChatGPT arbeiten:**
+4. **Mit AI arbeiten:**
    - Zusammenfassungen erstellen
    - Fragen zu den Inhalten stellen
    - Lernmaterialien generieren
+   - Code analysieren lassen
+   - Komplexe Dokumente verstehen
 
 ## Unterstützte Formate
 

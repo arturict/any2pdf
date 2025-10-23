@@ -1,0 +1,47 @@
+{
+  "/home/artur/repos/file-from-folder/test_examples/output_basic/data.pdf": {
+    "hash": "0bd82eee783ac2fc1270a5b34624e58b",
+    "output": "test_examples/output_merged/output_basic_data.pdf",
+    "timestamp": 1761231604.76753
+  },
+  "/home/artur/repos/file-from-folder/test_examples/output_basic/document.pdf": {
+    "hash": "46bf3492f2ce68920b76bee067322a55",
+    "output": "test_examples/output_merged/output_basic_document.pdf",
+    "timestamp": 1761231604.7683306
+  },
+  "/home/artur/repos/file-from-folder/test_examples/output_basic/page.pdf": {
+    "hash": "f9d47668f769a9668d169f8b9c606814",
+    "output": "test_examples/output_merged/output_basic_page.pdf",
+    "timestamp": 1761231604.7876356
+  },
+  "/home/artur/repos/file-from-folder/test_examples/output_basic/readme.pdf": {
+    "hash": "95fc51dd76d057b4ff01355699aec577",
+    "output": "test_examples/output_merged/output_basic_readme.pdf",
+    "timestamp": 1761231604.7966468
+  },
+  "/home/artur/repos/file-from-folder/test_examples/data.json": {
+    "hash": "3d903fc19675c2abdd336a1ecbba9cf5",
+    "output": "test_examples/output_merged/data.pdf",
+    "timestamp": 1761231604.9132073
+  },
+  "/home/artur/repos/file-from-folder/test_examples/data.csv": {
+    "hash": "c7e7374cc54b767e916dfa0ffa3360e3",
+    "output": "test_examples/output_merged/data.pdf",
+    "timestamp": 1761231604.9182446
+  },
+  "/home/artur/repos/file-from-folder/test_examples/document.txt": {
+    "hash": "94562f0617a6e5d60f4b45a590080217",
+    "output": "test_examples/output_merged/document.pdf",
+    "timestamp": 1761231604.9261756
+  },
+  "/home/artur/repos/file-from-folder/test_examples/readme.md": {
+    "hash": "1e66a5cca45f486880ae615db5f99878",
+    "output": "test_examples/output_merged/readme.pdf",
+    "timestamp": 1761231604.953114
+  },
+  "/home/artur/repos/file-from-folder/test_examples/page.html": {
+    "hash": "a261bcde3929f390ff5abde689592592",
+    "output": "test_examples/output_merged/page.pdf",
+    "timestamp": 1761231604.953318
+  }
+}
