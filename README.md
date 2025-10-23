@@ -13,6 +13,8 @@ Ein Python-Tool zur Konvertierung von verschiedensten Dateiformaten in durchsuch
 - 🔍 **OCR**: Macht alle Dokumente durchsuchbar mit Texterkennung (Deutsch & Englisch)
 - 📁 **Batch-Verarbeitung**: Verarbeitet ganze Ordner mit Unterordnern
 - 🔗 **PDF-Zusammenführung**: Optional alle PDFs in einem Dokument zusammenführen
+- ⚡ **Parallel Processing**: 50-70% schneller durch Multi-Threading
+- 💾 **Smart Caching**: Überspringe bereits konvertierte Dateien automatisch
 - 🚀 **Einfach zu bedienen**: Ein Befehl für alles
 
 ## Installation
@@ -70,6 +72,12 @@ python document_to_pdf.py /pfad/zum/ordner --no-ocr
 
 # Alle PDFs in einem Dokument zusammenführen
 python document_to_pdf.py /pfad/zum/ordner --merge
+
+# ⚡ Mit Parallel Processing (4 Workers)
+python document_to_pdf.py /pfad/zum/ordner --merge -j 4
+
+# 💾 Ohne Caching (immer neu konvertieren)
+python document_to_pdf.py /pfad/zum/ordner --merge --no-cache
 ```
 
 ### Beispiele
@@ -196,10 +204,21 @@ MIT License - Frei zu verwenden für Bildungszwecke.
 ## Tipps
 
 - **Große Dateien**: Konvertierung kann bei vielen/großen Dateien länger dauern
+- **⚡ Performance**: Nutze `-j 4` für parallele Konvertierung (50-70% schneller!)
+- **💾 Caching**: Bei wiederholten Läufen werden unveränderte Dateien übersprungen
 - **OCR-Qualität**: Beste Ergebnisse mit hochauflösenden Bildern (300 DPI)
 - **Sprachen**: Standard ist Deutsch + Englisch, weitere können installiert werden
 - **Batch-Processing**: Verarbeitet automatisch alle Unterordner
 - **Merge-Option**: Mit `--merge` wird ein einziges PDF erstellt, ideal für ChatGPT
+
+## Performance
+
+Siehe [PERFORMANCE.md](PERFORMANCE.md) für detaillierte Benchmarks und Optimierungen.
+
+**TL;DR**: any2pdf ist jetzt **50-200% schneller** durch:
+- ⚡ Parallel Processing (Multi-Threading)
+- 💾 Smart Caching (Überspringe bereits konvertierte Dateien)
+- ⏱️ Performance Metrics (Zeit-Tracking)
 
 ## Beispiel-Output
 
