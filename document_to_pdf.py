@@ -775,6 +775,9 @@ class DocumentConverter:
 class PDFChatSession:
     """Interactive chat session with PDF using AI."""
     
+    # GPT-5 reasoning models (support reasoning effort)
+    GPT5_REASONING_MODELS = ["gpt-5", "gpt-5-mini", "gpt-5-nano"]
+    
     OPENAI_MODELS = [
         # GPT-5 Series (Latest - October 2025)
         "gpt-5",                     # Best for complex reasoning, coding & agentic tasks
@@ -823,12 +826,13 @@ class PDFChatSession:
         "gemini-1.0-pro"                 # Legacy 1.0
     ]
     
-    def __init__(self, pdf_path: Path, provider: str = None, api_key: str = None, model: str = None):
+    def __init__(self, pdf_path: Path, provider: str = None, api_key: str = None, model: str = None, reasoning_effort: str = None):
         """Initialize chat session with PDF."""
         self.pdf_path = pdf_path
         self.provider = provider
         self.api_key = api_key
         self.model = model
+        self.reasoning_effort = reasoning_effort  # For GPT-5 models
         self.conversation_history = []
         
         if not self.pdf_path.exists():
@@ -943,10 +947,17 @@ class PDFChatSession:
             
             messages.append({"role": "user", "content": user_message})
             
-            response = client.chat.completions.create(
-                model=self.model,
-                messages=messages
-            )
+            # Prepare request parameters
+            request_params = {
+                "model": self.model,
+                "messages": messages
+            }
+            
+            # Add reasoning_effort for GPT-5 models
+            if self.model in self.GPT5_REASONING_MODELS and self.reasoning_effort:
+                request_params["reasoning_effort"] = self.reasoning_effort
+            
+            response = client.chat.completions.create(**request_params)
             
             assistant_message = response.choices[0].message.content
             
@@ -997,6 +1008,8 @@ class PDFChatSession:
         print(f"{Colors.BOLD}📄 PDF:{Colors.ENDC} {Colors.CYAN}{self.pdf_path.name}{Colors.ENDC}")
         print(f"{Colors.BOLD}🤖 Provider:{Colors.ENDC} {Colors.CYAN}{self.provider.upper()}{Colors.ENDC}")
         print(f"{Colors.BOLD}🎯 Model:{Colors.ENDC} {Colors.CYAN}{self.model}{Colors.ENDC}")
+        if self.reasoning_effort and self.model in self.GPT5_REASONING_MODELS:
+            print(f"{Colors.BOLD}🧠 Reasoning:{Colors.ENDC} {Colors.CYAN}{self.reasoning_effort}{Colors.ENDC}")
         print(f"{Colors.BOLD}📝 PDF Length:{Colors.ENDC} {Colors.CYAN}{len(self.pdf_text)} characters{Colors.ENDC}")
         print()
         print(f"{Colors.DIM}Type your questions below. Commands:{Colors.ENDC}")
@@ -1139,15 +1152,54 @@ def prompt_for_chat(merged_pdf_path: Path):
     
     print()
     
-    # Show available models
+    # Show available models (sorted by provider)
     print(f"{Colors.BOLD}Available models:{Colors.ENDC}")
-    for i, model in enumerate(available_models[:10], 1):  # Show top 10
-        print(f"  {i}. {model}")
+    
+    if provider == "openai":
+        # Group OpenAI models by series
+        print(f"{Colors.CYAN}  GPT-5 Series (Latest):{Colors.ENDC}")
+        gpt5_models = [m for m in available_models if m.startswith("gpt-5")]
+        for i, model_name in enumerate(gpt5_models[:4], 1):
+            print(f"    {i}. {model_name}")
+        
+        print(f"{Colors.CYAN}  GPT-4.1 Series:{Colors.ENDC}")
+        gpt41_models = [m for m in available_models if m.startswith("gpt-4.1")]
+        start_idx = len(gpt5_models[:4]) + 1
+        for i, model_name in enumerate(gpt41_models[:3], start_idx):
+            print(f"    {i}. {model_name}")
+        
+        print(f"{Colors.CYAN}  Other Models:{Colors.ENDC}")
+        other_models = [m for m in available_models if not m.startswith("gpt-5") and not m.startswith("gpt-4.1")]
+        start_idx = len(gpt5_models[:4]) + len(gpt41_models[:3]) + 1
+        for i, model_name in enumerate(other_models[:3], start_idx):
+            print(f"    {i}. {model_name}")
+        
+        display_count = min(10, len(gpt5_models) + len(gpt41_models) + len(other_models))
+    else:
+        # Group Gemini models by version
+        print(f"{Colors.CYAN}  Gemini 2.5 (Latest):{Colors.ENDC}")
+        gemini25_models = [m for m in available_models if "2.5" in m]
+        for i, model_name in enumerate(gemini25_models[:2], 1):
+            print(f"    {i}. {model_name}")
+        
+        print(f"{Colors.CYAN}  Gemini 2.0:{Colors.ENDC}")
+        gemini20_models = [m for m in available_models if "2.0" in m]
+        start_idx = len(gemini25_models[:2]) + 1
+        for i, model_name in enumerate(gemini20_models[:2], start_idx):
+            print(f"    {i}. {model_name}")
+        
+        print(f"{Colors.CYAN}  Gemini 1.5:{Colors.ENDC}")
+        gemini15_models = [m for m in available_models if "1.5" in m]
+        start_idx = len(gemini25_models[:2]) + len(gemini20_models[:2]) + 1
+        for i, model_name in enumerate(gemini15_models[:4], start_idx):
+            print(f"    {i}. {model_name}")
+        
+        display_count = min(10, len(gemini25_models) + len(gemini20_models) + len(gemini15_models))
     
     if len(available_models) > 10:
         print(f"{Colors.DIM}  ... and {len(available_models) - 10} more{Colors.ENDC}")
     
-    model_choice = input(f"\nChoice (1-{min(10, len(available_models))}) or enter custom model name: ").strip()
+    model_choice = input(f"\nChoice (1-{display_count}) or enter custom model name: ").strip()
     
     try:
         model = available_models[int(model_choice) - 1]
@@ -1158,8 +1210,32 @@ def prompt_for_chat(merged_pdf_path: Path):
             model = available_models[0]
     
     print(f"{Colors.GREEN}✓ Using model:{Colors.ENDC} {model}\n")
+    
+    # Ask for reasoning effort if GPT-5 model
+    reasoning_effort = None
+    if provider == "openai" and model in PDFChatSession.GPT5_REASONING_MODELS:
+        print(f"{Colors.BOLD}🧠 Select reasoning effort for {model}:{Colors.ENDC}")
+        print(f"{Colors.DIM}Choose how deeply the model should reason before responding:{Colors.ENDC}")
+        print(f"  1. {Colors.CYAN}minimal{Colors.ENDC}  - Fastest, few reasoning tokens (best for simple tasks)")
+        print(f"  2. {Colors.CYAN}low{Colors.ENDC}      - Quick reasoning (good for straightforward questions)")
+        print(f"  3. {Colors.CYAN}medium{Colors.ENDC}   - Balanced reasoning (default, recommended)")
+        print(f"  4. {Colors.CYAN}high{Colors.ENDC}     - Deep reasoning (best for complex coding & analysis)")
+        
+        effort_choice = input(f"\nChoice (1-4, default: 3): ").strip()
+        
+        effort_map = {
+            "1": "minimal",
+            "2": "low",
+            "3": "medium",
+            "4": "high",
+            "": "medium"  # default
+        }
+        
+        reasoning_effort = effort_map.get(effort_choice, "medium")
+        print(f"{Colors.GREEN}✓ Using reasoning effort:{Colors.ENDC} {reasoning_effort}\n")
+    
     try:
-        chat = PDFChatSession(merged_pdf_path, provider, api_key, model)
+        chat = PDFChatSession(merged_pdf_path, provider, api_key, model, reasoning_effort)
         chat.start_chat()
     except Exception as e:
         print(f"{Colors.RED}✗ Failed to start chat:{Colors.ENDC} {e}")
