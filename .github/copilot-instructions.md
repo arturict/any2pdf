@@ -201,3 +201,319 @@ Always document Windows-specific instructions with WSL guidance.
 6. **Performance**: Suggest `-j` flag for large batches
 7. **Caching**: Explain that `.cache/` directory speeds up repeated conversions
 8. **Reasoning Effort**: Help users choose appropriate level based on their use case
+
+## Testing Guidelines
+
+### Running Tests
+
+**Unit Tests:**
+```bash
+# Run the basic test suite
+python3 test_converter.py
+```
+
+**Integration Tests:**
+```bash
+# Run full integration test suite with examples
+bash test_examples.sh
+```
+
+**Test Structure:**
+- `test_converter.py` - Unit tests for DocumentConverter class
+- `test_examples.sh` - Integration tests with sample files
+- `test_examples/` - Directory with test output (auto-created)
+- `test_files/` - Sample files for testing
+
+**Writing Tests:**
+- Test each conversion format independently
+- Include tests for error handling
+- Test with and without OCR
+- Test parallel processing with different worker counts
+- Mock external dependencies (LibreOffice, Tesseract) when appropriate
+- Verify cache behavior
+
+### Test Dependencies
+
+Before running tests, ensure all dependencies are installed:
+```bash
+# Quick dependency check
+python3 test_converter.py  # Will report missing dependencies
+
+# Install missing dependencies
+bash setup.sh  # For Ubuntu/Debian
+```
+
+## Build and Linting
+
+### Code Quality
+
+**Python Style:**
+- Follow PEP 8 conventions
+- Use type hints for all function signatures
+- Maximum line length: 100 characters
+- Use docstrings for all public classes and functions
+
+**Linting (recommended but not required):**
+```bash
+# Install linting tools (optional)
+pip install pylint black flake8 mypy
+
+# Run linters
+pylint document_to_pdf.py
+black --check document_to_pdf.py
+flake8 document_to_pdf.py --max-line-length=100
+mypy document_to_pdf.py
+```
+
+**Code Formatting:**
+```bash
+# Auto-format code (if black is installed)
+black document_to_pdf.py flatten_files.py test_converter.py
+```
+
+### Pre-commit Checks
+
+Before committing code:
+1. Run tests: `python3 test_converter.py`
+2. Check for syntax errors: `python3 -m py_compile document_to_pdf.py`
+3. Test basic functionality: `python3 document_to_pdf.py --help`
+4. Verify documentation is updated if adding features
+
+## Repository Commands
+
+### Setup and Installation
+
+```bash
+# Initial setup (Ubuntu/Debian)
+bash setup.sh
+
+# Manual setup
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# Verify installation
+python3 test_converter.py
+```
+
+### Development Workflow
+
+```bash
+# Activate virtual environment
+source venv/bin/activate
+
+# Run converter in development
+python3 document_to_pdf.py ./test_files --merge -j 4
+
+# Test changes
+python3 test_converter.py
+bash test_examples.sh
+
+# Check dependencies
+python3 -c "from document_to_pdf import DocumentConverter; import sys; converter = DocumentConverter(sys.path[0]); converter.print_dependencies()"
+```
+
+### Common Commands
+
+```bash
+# Convert with all features
+python3 document_to_pdf.py /path/to/docs --merge -j 4
+
+# Quick test without OCR
+python3 document_to_pdf.py ./test_examples --no-ocr
+
+# Test AI chat integration (requires API key)
+python3 document_to_pdf.py ./test_examples --merge
+# Then answer 'y' when prompted for chat
+
+# Flatten directory structure (helper utility)
+python3 flatten_files.py /path/to/nested/folders
+```
+
+## Contribution Workflow
+
+### Making Changes
+
+1. **Understand the Change:**
+   - Read existing code and documentation
+   - Identify affected components
+   - Check if system dependencies are needed
+
+2. **Implement Changes:**
+   - Make minimal, focused changes
+   - Follow existing code style
+   - Update type hints
+   - Add appropriate error handling
+
+3. **Test Your Changes:**
+   - Run unit tests: `python3 test_converter.py`
+   - Run integration tests: `bash test_examples.sh`
+   - Test manually with sample files
+   - Test error cases
+
+4. **Update Documentation:**
+   - Update README.md if adding features
+   - Update CHANGELOG.md
+   - Add inline comments for complex logic
+   - Update this file if workflow changes
+
+5. **Commit Guidelines:**
+   - Use clear, descriptive commit messages
+   - Reference issue numbers if applicable
+   - Keep commits focused and atomic
+
+### Adding New Features
+
+**Adding a New File Format:**
+1. Add extension to appropriate format list (OFFICE_FORMATS, IMAGE_FORMATS, etc.)
+2. Implement `convert_<format>_to_pdf()` method
+3. Add error handling for missing dependencies
+4. Test with sample files
+5. Update README.md and docs/FEATURES.md
+
+**Adding a New AI Provider:**
+1. Add optional import at top of file
+2. Implement in `PDFChatSession.fetch_available_models()`
+3. Add provider-specific chat logic in `PDFChatSession.chat_with_pdf()`
+4. Update model selection UI
+5. Update README.md with provider documentation
+6. Test with API key
+
+## Debugging and Troubleshooting
+
+### Common Issues
+
+**LibreOffice Not Found:**
+```bash
+# Check if installed
+which libreoffice
+# Install if missing
+sudo apt-get install libreoffice
+```
+
+**Tesseract OCR Issues:**
+```bash
+# Verify Tesseract installation
+tesseract --version
+# Check language data
+tesseract --list-langs
+# Install if missing
+sudo apt-get install tesseract-ocr tesseract-ocr-deu
+```
+
+**Python Import Errors:**
+```bash
+# Activate virtual environment first
+source venv/bin/activate
+# Reinstall dependencies
+pip install -r requirements.txt
+```
+
+**Permission Errors:**
+```bash
+# Don't run with sudo
+# Instead, fix permissions on output directory
+chmod 755 /path/to/output
+```
+
+### Debugging Tips
+
+1. **Enable Verbose Output:**
+   - The converter already prints detailed status messages
+   - Check for error messages in red
+   - Look for warnings in yellow
+
+2. **Test Individual Files:**
+   ```bash
+   # Create test directory with single file
+   mkdir test_single
+   cp problematic_file.pptx test_single/
+   python3 document_to_pdf.py test_single
+   ```
+
+3. **Check Dependencies:**
+   ```bash
+   python3 test_converter.py
+   # This will show which dependencies are missing
+   ```
+
+4. **Cache Issues:**
+   ```bash
+   # Clear cache if getting stale results
+   rm -rf .cache/
+   ```
+
+5. **LibreOffice Process Issues:**
+   ```bash
+   # Kill stuck LibreOffice processes
+   pkill -f soffice
+   ```
+
+## Security Best Practices
+
+### API Key Management
+
+- **Never commit API keys** to version control
+- Use environment variables for keys: `OPENAI_API_KEY`, `GEMINI_API_KEY`
+- Keys are requested at runtime if not in environment
+- Don't log or print API keys in error messages
+
+### File Handling
+
+- Validate file extensions before processing
+- Use subprocess with proper escaping for external commands
+- Don't execute arbitrary code from input files
+- Limit file sizes to prevent resource exhaustion
+- Clean up temporary files after processing
+
+### External Dependencies
+
+- Pin dependency versions in requirements.txt
+- Regularly update dependencies for security patches
+- Validate external tool outputs before using
+- Use subprocess with `shell=False` when possible
+- Sanitize file paths to prevent directory traversal
+
+### User Input Validation
+
+- Validate all command-line arguments
+- Check for malicious file paths (`../`, etc.)
+- Limit parallel workers to reasonable values
+- Validate model names before API calls
+
+## Performance Considerations
+
+### Optimization Checklist
+
+When making changes that affect performance:
+- [ ] Test with `-j` flag for parallel processing
+- [ ] Verify caching works correctly
+- [ ] Check memory usage with large files
+- [ ] Test with batch of 10+ documents
+- [ ] Profile if making algorithmic changes
+- [ ] Document performance characteristics in code
+
+### Benchmarking
+
+```bash
+# Time a conversion
+time python3 document_to_pdf.py ./large_batch --merge -j 4
+
+# Compare with/without parallel processing
+time python3 document_to_pdf.py ./test_batch --merge -j 1
+time python3 document_to_pdf.py ./test_batch --merge -j 4
+
+# Test caching (should be much faster on second run)
+time python3 document_to_pdf.py ./test_batch --merge
+time python3 document_to_pdf.py ./test_batch --merge  # Should use cache
+```
+
+## Documentation Structure
+
+- `README.md` - Main documentation (German) with quickstart
+- `docs/USAGE.md` - Detailed usage instructions
+- `docs/FEATURES.md` - Feature documentation
+- `docs/PERFORMANCE.md` - Performance benchmarks and tips
+- `docs/PROJECT_STRUCTURE.md` - Code organization
+- `CHANGELOG.md` - Version history
+- `.github/copilot-instructions.md` - This file (for AI assistants)
