@@ -1,5 +1,51 @@
 # Changelog
 
+## Version 1.4.1 (October 2025) - Interactive Mode Perfection
+
+### 🎨 Enhanced Interactive Experience
+
+#### Improvements
+- **✨ Perfect Interactive Mode**: Completely redesigned for maximum user-friendliness
+  - Beautiful color scheme (Green/Blue/Orange/Purple)
+  - Better prompt descriptions with multi-line hints
+  - Real-time file counting in source folder
+  - Configuration summary before execution
+  - Final confirmation prompt
+  - Graceful cancellation handling
+  
+- **🚀 Smart Fallback**: When questionary not installed
+  - Clear installation instructions
+  - Helpful error messages with tips
+  - Seamless fallback to CLI mode
+  - Better guidance for first-time users
+
+- **🎯 Enhanced AI Chat UX**:
+  - Questionary integration for AI chat prompts
+  - Grouped model selection with separators
+  - Password field for API keys (secure input)
+  - Visual reasoning effort selection
+  - Better provider selection flow
+  - Works with or without questionary
+
+- **📚 New Documentation**:
+  - Added `docs/INTERACTIVE_MODE.md` - Complete interactive mode guide
+  - Keyboard shortcuts reference
+  - Step-by-step walkthrough with screenshots
+  - Troubleshooting section
+  - Comparison table: Interactive vs CLI
+
+#### Bug Fixes
+- Fixed interactive mode not starting when questionary missing
+- Improved error messages for missing dependencies
+- Better validation of user inputs
+- Fixed edge case with empty folder selection
+
+#### Technical Changes
+- Separated interactive logic into dedicated function
+- Better style configuration for questionary
+- Improved prompt validation
+- Enhanced error handling throughout interactive flow
+
 ## Version 1.4.0 (October 2025)
 
 ### ✨ Interactive CLI Mode

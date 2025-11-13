@@ -1094,15 +1094,38 @@ class PDFChatSession:
 
 
 def prompt_for_chat(merged_pdf_path: Path):
-    """Prompt user for AI chat after conversion."""
+    """Prompt user for AI chat after conversion - with questionary if available."""
     print(f"{Colors.DIM}{'─'*70}{Colors.ENDC}")
-    print(f"{Colors.BOLD}{Colors.CYAN}💬 Would you like to chat with the PDF using AI?{Colors.ENDC}")
-    print()
     
-    response = input(f"Start chat session? (y/N): ").strip().lower()
-    
-    if response not in ['y', 'yes']:
-        return
+    # Use questionary if available for better UX
+    if QUESTIONARY_AVAILABLE:
+        from questionary import Style
+        custom_style = Style([
+            ('qmark', 'fg:#4CAF50 bold'),
+            ('question', 'fg:#2196F3 bold'),
+            ('answer', 'fg:#FF9800 bold'),
+            ('pointer', 'fg:#9C27B0 bold'),
+            ('highlighted', 'fg:#9C27B0 bold'),
+            ('selected', 'fg:#4CAF50'),
+            ('separator', 'fg:#607D8B'),
+            ('instruction', 'fg:#9E9E9E'),
+        ])
+        
+        start_chat = questionary.confirm(
+            "💬 Would you like to chat with your PDF using AI?",
+            default=False,
+            style=custom_style
+        ).ask()
+        
+        if not start_chat:
+            return
+    else:
+        # Fallback to regular input
+        print(f"{Colors.BOLD}{Colors.CYAN}💬 Would you like to chat with the PDF using AI?{Colors.ENDC}")
+        print()
+        response = input(f"Start chat session? (y/N): ").strip().lower()
+        if response not in ['y', 'yes']:
+            return
     
     print()
     
@@ -1115,36 +1138,66 @@ def prompt_for_chat(merged_pdf_path: Path):
         return
     
     # Select provider
-    print(f"{Colors.BOLD}Select AI provider:{Colors.ENDC}")
     providers = []
     if OPENAI_AVAILABLE:
         providers.append("openai")
-        print(f"  1. OpenAI (GPT-4, GPT-3.5, etc.)")
     if GEMINI_AVAILABLE:
         providers.append("gemini")
-        print(f"  {len(providers)}. Google Gemini")
     
-    if len(providers) == 1:
-        provider = providers[0]
-        print(f"\n{Colors.GREEN}✓ Using {provider.upper()}{Colors.ENDC}")
+    if QUESTIONARY_AVAILABLE and len(providers) > 1:
+        provider_choices = []
+        if OPENAI_AVAILABLE:
+            provider_choices.append("OpenAI (GPT-5, GPT-4.1, etc.)")
+        if GEMINI_AVAILABLE:
+            provider_choices.append("Google Gemini (2.5, 2.0, 1.5)")
+        
+        provider_choice = questionary.select(
+            "🤖 Select AI provider:",
+            choices=provider_choices,
+            style=custom_style
+        ).ask()
+        
+        provider = "openai" if "OpenAI" in provider_choice else "gemini"
     else:
-        provider_choice = input(f"\nChoice (1-{len(providers)}): ").strip()
-        try:
-            provider = providers[int(provider_choice) - 1]
-        except:
-            print(f"{Colors.RED}✗ Invalid choice{Colors.ENDC}")
-            return
+        # Fallback to regular selection
+        print(f"{Colors.BOLD}Select AI provider:{Colors.ENDC}")
+        if OPENAI_AVAILABLE:
+            print(f"  1. OpenAI (GPT-5, GPT-4.1, etc.)")
+        if GEMINI_AVAILABLE:
+            print(f"  {len(providers)}. Google Gemini")
+        
+        if len(providers) == 1:
+            provider = providers[0]
+            print(f"\n{Colors.GREEN}✓ Using {provider.upper()}{Colors.ENDC}")
+        else:
+            provider_choice = input(f"\nChoice (1-{len(providers)}): ").strip()
+            try:
+                provider = providers[int(provider_choice) - 1]
+            except:
+                print(f"{Colors.RED}✗ Invalid choice{Colors.ENDC}")
+                return
     
     print()
     
     # Get API key
-    print(f"{Colors.BOLD}Enter API key:{Colors.ENDC}")
-    if provider == "openai":
-        print(f"{Colors.DIM}Get your key at: https://platform.openai.com/api-keys{Colors.ENDC}")
+    if QUESTIONARY_AVAILABLE:
+        if provider == "openai":
+            api_key = questionary.password(
+                "🔑 OpenAI API Key:\n   (Get it at: https://platform.openai.com/api-keys)",
+                style=custom_style
+            ).ask()
+        else:
+            api_key = questionary.password(
+                "🔑 Gemini API Key:\n   (Get it at: https://makersuite.google.com/app/apikey)",
+                style=custom_style
+            ).ask()
     else:
-        print(f"{Colors.DIM}Get your key at: https://makersuite.google.com/app/apikey{Colors.ENDC}")
-    
-    api_key = input("API Key: ").strip()
+        print(f"{Colors.BOLD}Enter API key:{Colors.ENDC}")
+        if provider == "openai":
+            print(f"{Colors.DIM}Get your key at: https://platform.openai.com/api-keys{Colors.ENDC}")
+        else:
+            print(f"{Colors.DIM}Get your key at: https://makersuite.google.com/app/apikey{Colors.ENDC}")
+        api_key = input("API Key: ").strip()
     
     if not api_key:
         print(f"{Colors.RED}✗ No API key provided{Colors.ENDC}")
@@ -1157,74 +1210,68 @@ def prompt_for_chat(merged_pdf_path: Path):
     
     if provider == "openai":
         available_models = PDFChatSession.get_available_openai_models(api_key)
-        if available_models != PDFChatSession.OPENAI_MODELS:
-            print(f"{Colors.GREEN}✓ Fetched {len(available_models)} models from API{Colors.ENDC}")
-        else:
-            print(f"{Colors.YELLOW}⚠  Using default model list{Colors.ENDC}")
     else:
         available_models = PDFChatSession.get_available_gemini_models(api_key)
-        if available_models != PDFChatSession.GEMINI_MODELS:
-            print(f"{Colors.GREEN}✓ Fetched {len(available_models)} models from API{Colors.ENDC}")
+    
+    print(f"{Colors.GREEN}✓ Found {len(available_models)} models{Colors.ENDC}\n")
+    
+    # Model selection with questionary if available
+    if QUESTIONARY_AVAILABLE:
+        # Group models nicely for selection
+        if provider == "openai":
+            gpt5_models = [m for m in available_models if m.startswith("gpt-5")][:4]
+            gpt41_models = [m for m in available_models if m.startswith("gpt-4.1")][:3]
+            other_models = [m for m in available_models if not m.startswith("gpt-5") and not m.startswith("gpt-4.1")][:3]
+            
+            model_choices = (
+                [questionary.Separator("GPT-5 Series (Latest)")] + gpt5_models +
+                [questionary.Separator("GPT-4.1 Series")] + gpt41_models +
+                [questionary.Separator("Other Models")] + other_models
+            )
         else:
-            print(f"{Colors.YELLOW}⚠  Using default model list{Colors.ENDC}")
-    
-    print()
-    
-    # Show available models (sorted by provider)
-    print(f"{Colors.BOLD}Available models:{Colors.ENDC}")
-    
-    if provider == "openai":
-        # Group OpenAI models by series
-        print(f"{Colors.CYAN}  GPT-5 Series (Latest):{Colors.ENDC}")
-        gpt5_models = [m for m in available_models if m.startswith("gpt-5")]
-        for i, model_name in enumerate(gpt5_models[:4], 1):
-            print(f"    {i}. {model_name}")
+            gemini25 = [m for m in available_models if "2.5" in m][:2]
+            gemini20 = [m for m in available_models if "2.0" in m][:2]
+            gemini15 = [m for m in available_models if "1.5" in m][:4]
+            
+            model_choices = (
+                [questionary.Separator("Gemini 2.5 (Latest)")] + gemini25 +
+                [questionary.Separator("Gemini 2.0")] + gemini20 +
+                [questionary.Separator("Gemini 1.5")] + gemini15
+            )
         
-        print(f"{Colors.CYAN}  GPT-4.1 Series:{Colors.ENDC}")
-        gpt41_models = [m for m in available_models if m.startswith("gpt-4.1")]
-        start_idx = len(gpt5_models[:4]) + 1
-        for i, model_name in enumerate(gpt41_models[:3], start_idx):
-            print(f"    {i}. {model_name}")
-        
-        print(f"{Colors.CYAN}  Other Models:{Colors.ENDC}")
-        other_models = [m for m in available_models if not m.startswith("gpt-5") and not m.startswith("gpt-4.1")]
-        start_idx = len(gpt5_models[:4]) + len(gpt41_models[:3]) + 1
-        for i, model_name in enumerate(other_models[:3], start_idx):
-            print(f"    {i}. {model_name}")
-        
-        display_count = min(10, len(gpt5_models) + len(gpt41_models) + len(other_models))
+        model = questionary.select(
+            "🎯 Select AI model:",
+            choices=model_choices,
+            style=custom_style
+        ).ask()
     else:
-        # Group Gemini models by version
-        print(f"{Colors.CYAN}  Gemini 2.5 (Latest):{Colors.ENDC}")
-        gemini25_models = [m for m in available_models if "2.5" in m]
-        for i, model_name in enumerate(gemini25_models[:2], 1):
-            print(f"    {i}. {model_name}")
+        # Fallback to regular selection
+        print(f"{Colors.BOLD}Available models:{Colors.ENDC}")
         
-        print(f"{Colors.CYAN}  Gemini 2.0:{Colors.ENDC}")
-        gemini20_models = [m for m in available_models if "2.0" in m]
-        start_idx = len(gemini25_models[:2]) + 1
-        for i, model_name in enumerate(gemini20_models[:2], start_idx):
-            print(f"    {i}. {model_name}")
-        
-        print(f"{Colors.CYAN}  Gemini 1.5:{Colors.ENDC}")
-        gemini15_models = [m for m in available_models if "1.5" in m]
-        start_idx = len(gemini25_models[:2]) + len(gemini20_models[:2]) + 1
-        for i, model_name in enumerate(gemini15_models[:4], start_idx):
-            print(f"    {i}. {model_name}")
-        
-        display_count = min(10, len(gemini25_models) + len(gemini20_models) + len(gemini15_models))
-    
-    if len(available_models) > 10:
-        print(f"{Colors.DIM}  ... and {len(available_models) - 10} more{Colors.ENDC}")
-    
-    model_choice = input(f"\nChoice (1-{display_count}) or enter custom model name: ").strip()
-    
-    try:
-        model = available_models[int(model_choice) - 1]
-    except:
-        if model_choice:
-            model = model_choice
+        if provider == "openai":
+            gpt5_models = [m for m in available_models if m.startswith("gpt-5")]
+            gpt41_models = [m for m in available_models if m.startswith("gpt-4.1")]
+            other_models = [m for m in available_models if not m.startswith("gpt-5") and not m.startswith("gpt-4.1")]
+            
+            print(f"{Colors.CYAN}  GPT-5 Series:{Colors.ENDC}")
+            for i, m in enumerate(gpt5_models[:4], 1):
+                print(f"    {i}. {m}")
+            
+            print(f"{Colors.CYAN}  GPT-4.1 Series:{Colors.ENDC}")
+            start_idx = len(gpt5_models[:4]) + 1
+            for i, m in enumerate(gpt41_models[:3], start_idx):
+                print(f"    {i}. {m}")
+            
+            display_count = min(10, len(available_models))
         else:
+            for i, m in enumerate(available_models[:10], 1):
+                print(f"    {i}. {m}")
+            display_count = min(10, len(available_models))
+        
+        model_choice = input(f"\nChoice (1-{display_count}): ").strip()
+        try:
+            model = available_models[int(model_choice) - 1]
+        except:
             model = available_models[0]
     
     print(f"{Colors.GREEN}✓ Using model:{Colors.ENDC} {model}\n")
@@ -1232,25 +1279,26 @@ def prompt_for_chat(merged_pdf_path: Path):
     # Ask for reasoning effort if GPT-5 model
     reasoning_effort = None
     if provider == "openai" and model in PDFChatSession.GPT5_REASONING_MODELS:
-        print(f"{Colors.BOLD}🧠 Select reasoning effort for {model}:{Colors.ENDC}")
-        print(f"{Colors.DIM}Choose how deeply the model should reason before responding:{Colors.ENDC}")
-        print(f"  1. {Colors.CYAN}minimal{Colors.ENDC}  - Fastest, few reasoning tokens (best for simple tasks)")
-        print(f"  2. {Colors.CYAN}low{Colors.ENDC}      - Quick reasoning (good for straightforward questions)")
-        print(f"  3. {Colors.CYAN}medium{Colors.ENDC}   - Balanced reasoning (default, recommended)")
-        print(f"  4. {Colors.CYAN}high{Colors.ENDC}     - Deep reasoning (best for complex coding & analysis)")
+        if QUESTIONARY_AVAILABLE:
+            reasoning_effort = questionary.select(
+                f"🧠 Reasoning effort for {model}:",
+                choices=[
+                    questionary.Choice("minimal - Fastest (simple tasks)", value="minimal"),
+                    questionary.Choice("low - Quick reasoning", value="low"),
+                    questionary.Choice("medium - Balanced (recommended)", value="medium"),
+                    questionary.Choice("high - Deep reasoning (complex tasks)", value="high"),
+                ],
+                default="medium",
+                style=custom_style
+            ).ask()
+        else:
+            print(f"{Colors.BOLD}🧠 Select reasoning effort:{Colors.ENDC}")
+            print(f"  1. minimal  2. low  3. medium (default)  4. high")
+            effort_choice = input("Choice (1-4): ").strip()
+            effort_map = {"1": "minimal", "2": "low", "3": "medium", "4": "high", "": "medium"}
+            reasoning_effort = effort_map.get(effort_choice, "medium")
         
-        effort_choice = input(f"\nChoice (1-4, default: 3): ").strip()
-        
-        effort_map = {
-            "1": "minimal",
-            "2": "low",
-            "3": "medium",
-            "4": "high",
-            "": "medium"  # default
-        }
-        
-        reasoning_effort = effort_map.get(effort_choice, "medium")
-        print(f"{Colors.GREEN}✓ Using reasoning effort:{Colors.ENDC} {reasoning_effort}\n")
+        print(f"{Colors.GREEN}✓ Reasoning effort:{Colors.ENDC} {reasoning_effort}\n")
     
     try:
         chat = PDFChatSession(merged_pdf_path, provider, api_key, model, reasoning_effort)
@@ -1262,103 +1310,164 @@ def prompt_for_chat(merged_pdf_path: Path):
 def interactive_mode():
     """Interactive mode with questionary prompts."""
     if not QUESTIONARY_AVAILABLE:
-        print(f"{Colors.RED}✗ Questionary not installed. Falling back to standard mode.{Colors.ENDC}")
-        print(f"  Install with: {Colors.CYAN}pip install questionary{Colors.ENDC}\n")
+        print(f"{Colors.RED}✗ Questionary not installed.{Colors.ENDC}")
+        print(f"  Install with: {Colors.CYAN}pip install questionary rich{Colors.ENDC}\n")
         return None
     
-    # Custom style
+    # Custom style - more colorful and modern
     custom_style = Style([
-        ('qmark', 'fg:#673ab7 bold'),
-        ('question', 'bold'),
-        ('answer', 'fg:#f44336 bold'),
-        ('pointer', 'fg:#673ab7 bold'),
-        ('highlighted', 'fg:#673ab7 bold'),
-        ('selected', 'fg:#cc5454'),
-        ('separator', 'fg:#cc5454'),
-        ('instruction', ''),
+        ('qmark', 'fg:#4CAF50 bold'),          # Green question mark
+        ('question', 'fg:#2196F3 bold'),        # Blue question
+        ('answer', 'fg:#FF9800 bold'),          # Orange answer
+        ('pointer', 'fg:#9C27B0 bold'),         # Purple pointer
+        ('highlighted', 'fg:#9C27B0 bold'),     # Purple highlight
+        ('selected', 'fg:#4CAF50'),             # Green selection
+        ('separator', 'fg:#607D8B'),            # Grey separator
+        ('instruction', 'fg:#9E9E9E'),          # Grey instructions
         ('text', ''),
     ])
     
-    # Welcome
-    print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}")
-    print(f"{Colors.BOLD}{Colors.HEADER}  any2pdf - Interactive Document Converter{Colors.ENDC}")
-    print(f"{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}\n")
+    # Welcome banner
+    print(f"\n{Colors.BOLD}{Colors.HEADER}{'═'*70}{Colors.ENDC}")
+    print(f"{Colors.BOLD}{Colors.HEADER}  📄 any2pdf - Interactive Document Converter{Colors.ENDC}")
+    print(f"{Colors.BOLD}{Colors.HEADER}{'═'*70}{Colors.ENDC}\n")
+    print(f"{Colors.CYAN}Welcome to the interactive setup! Let's configure your conversion...{Colors.ENDC}\n")
     
-    # Ask for source folder
+    # Ask for source folder with better prompt
     source_path = questionary.path(
-        "📁 Select source folder containing documents:",
+        "📁 Source folder (containing documents to convert):",
         only_directories=True,
         style=custom_style
     ).ask()
     
     if not source_path:
-        print(f"\n{Colors.RED}✗ Cancelled{Colors.ENDC}")
+        print(f"\n{Colors.YELLOW}⚠  Setup cancelled{Colors.ENDC}\n")
         return None
     
     source = Path(source_path).resolve()
     
+    # Validate source exists
+    if not source.exists() or not source.is_dir():
+        print(f"\n{Colors.RED}✗ Error: '{source}' is not a valid directory!{Colors.ENDC}\n")
+        return None
+    
+    # Quick scan to show what's in the folder
+    try:
+        all_formats = DocumentConverter.OFFICE_FORMATS | DocumentConverter.IMAGE_FORMATS | DocumentConverter.PDF_FORMATS | DocumentConverter.TEXT_FORMATS
+        file_count = 0
+        for root, dirs, files in os.walk(source):
+            for f in files:
+                if Path(f).suffix.lower() in all_formats:
+                    file_count += 1
+        
+        if file_count > 0:
+            print(f"  {Colors.GREEN}✓ Found {file_count} convertible file(s){Colors.ENDC}\n")
+        else:
+            print(f"  {Colors.YELLOW}⚠  No convertible files found in this folder{Colors.ENDC}")
+            continue_anyway = questionary.confirm(
+                "Continue anyway?",
+                default=False,
+                style=custom_style
+            ).ask()
+            if not continue_anyway:
+                return None
+            print()
+    except:
+        pass
+    
     # Ask for output folder (optional)
+    default_output = source / "converted_pdfs"
     use_custom_output = questionary.confirm(
-        "📂 Use custom output folder? (default: source_folder/converted_pdfs)",
+        f"📂 Use custom output folder?\n   (default: {default_output})",
         default=False,
         style=custom_style
     ).ask()
     
     output = None
     if use_custom_output:
-        output_path = questionary.path(
-            "📂 Select output folder:",
-            only_directories=True,
+        output_path = questionary.text(
+            "📂 Output folder path:",
+            default=str(default_output),
             style=custom_style
         ).ask()
         if output_path:
             output = Path(output_path).resolve()
     
-    # Ask about OCR
+    print()
+    
+    # Ask about OCR with explanation
     use_ocr = questionary.confirm(
-        "🔍 Enable OCR for searchable text? (recommended)",
+        "🔍 Enable OCR (Optical Character Recognition)?\n   Makes PDFs searchable and better for AI analysis (recommended)",
         default=True,
-        style=custom_style
+        style=custom_style,
+        auto_enter=False
     ).ask()
     
-    # Ask about merging
+    # Ask about merging with explanation
     merge_output = questionary.confirm(
-        "🔗 Merge all PDFs into single document?",
+        "🔗 Merge all PDFs into a single document?\n   Perfect for uploading to ChatGPT/Claude",
         default=False,
         style=custom_style
     ).ask()
     
     # Ask about parallel processing
     cpu_count = os.cpu_count() or 4
+    max_workers_choices = [
+        "1 worker (sequential, safest)",
+        "2 workers (2x faster)",
+        "4 workers (4x faster, recommended)",
+    ]
+    
+    if cpu_count > 4:
+        max_workers_choices.append(f"{cpu_count} workers (maximum speed)")
+    
+    max_workers_choices.append("Custom number")
+    
     max_workers_choice = questionary.select(
-        "⚡ Parallel processing workers:",
-        choices=[
-            f"1 worker (sequential)",
-            f"2 workers",
-            f"4 workers (recommended)",
-            f"{cpu_count} workers (max)",
-            "Custom"
-        ],
-        default=f"4 workers (recommended)",
+        "⚡ How many parallel workers?",
+        choices=max_workers_choices,
+        default="4 workers (4x faster, recommended)",
         style=custom_style
     ).ask()
     
     if "Custom" in max_workers_choice:
-        max_workers = questionary.text(
-            "Enter number of workers:",
+        max_workers_text = questionary.text(
+            "Enter number of workers (1-32):",
             default="4",
-            validate=lambda x: x.isdigit() and int(x) > 0
+            validate=lambda x: x.isdigit() and 1 <= int(x) <= 32,
+            style=custom_style
         ).ask()
-        max_workers = int(max_workers)
+        max_workers = int(max_workers_text)
     else:
         max_workers = int(max_workers_choice.split()[0])
     
     # Ask about caching
     use_cache = questionary.confirm(
-        "💾 Enable smart caching? (skip already converted files)",
+        "💾 Enable smart caching?\n   Skip files that were already converted (saves time on re-runs)",
         default=True,
         style=custom_style
     ).ask()
+    
+    # Summary
+    print(f"\n{Colors.BOLD}{Colors.CYAN}📋 Configuration Summary:{Colors.ENDC}")
+    print(f"  {Colors.BOLD}Source:{Colors.ENDC}     {source}")
+    print(f"  {Colors.BOLD}Output:{Colors.ENDC}     {output or default_output}")
+    print(f"  {Colors.BOLD}OCR:{Colors.ENDC}        {Colors.GREEN + 'Enabled' if use_ocr else Colors.YELLOW + 'Disabled'}{Colors.ENDC}")
+    print(f"  {Colors.BOLD}Merge:{Colors.ENDC}      {Colors.GREEN + 'Yes' if merge_output else Colors.DIM + 'No'}{Colors.ENDC}")
+    print(f"  {Colors.BOLD}Workers:{Colors.ENDC}    {max_workers}")
+    print(f"  {Colors.BOLD}Caching:{Colors.ENDC}    {Colors.GREEN + 'Enabled' if use_cache else Colors.YELLOW + 'Disabled'}{Colors.ENDC}")
+    print()
+    
+    # Final confirmation
+    proceed = questionary.confirm(
+        "🚀 Start conversion with these settings?",
+        default=True,
+        style=custom_style
+    ).ask()
+    
+    if not proceed:
+        print(f"\n{Colors.YELLOW}⚠  Conversion cancelled{Colors.ENDC}\n")
+        return None
     
     print()
     
@@ -1375,7 +1484,21 @@ def interactive_mode():
 def main():
     """Main entry point."""
     # Check if running in interactive mode (no arguments)
-    if len(sys.argv) == 1 and QUESTIONARY_AVAILABLE:
+    if len(sys.argv) == 1:
+        if not QUESTIONARY_AVAILABLE:
+            # Show instructions for interactive mode
+            print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}")
+            print(f"{Colors.BOLD}{Colors.HEADER}  any2pdf - Universal Document to PDF Converter{Colors.ENDC}")
+            print(f"{Colors.BOLD}{Colors.HEADER}{'='*70}{Colors.ENDC}\n")
+            print(f"{Colors.YELLOW}⚠  Interactive mode requires additional packages.{Colors.ENDC}")
+            print(f"\nInstall interactive mode dependencies:")
+            print(f"  {Colors.CYAN}pip install questionary rich{Colors.ENDC}")
+            print(f"\nOr use traditional CLI mode:")
+            print(f"  {Colors.CYAN}python3 document_to_pdf.py /path/to/documents{Colors.ENDC}")
+            print(f"  {Colors.CYAN}python3 document_to_pdf.py --help{Colors.ENDC}")
+            print()
+            sys.exit(1)
+        
         # Interactive mode
         config = interactive_mode()
         if not config:
@@ -1453,35 +1576,32 @@ Supported formats:
         
         args = parser.parse_args()
         
-        # If no source folder provided, try interactive mode
+        # If no source folder provided and no interactive mode
         if not args.source_folder:
-            if QUESTIONARY_AVAILABLE:
-                config = interactive_mode()
-                if not config:
-                    sys.exit(0)
-                source = config['source_folder']
-            else:
-                parser.print_help()
-                sys.exit(1)
-        else:
-            # Validate source folder
-            source = Path(args.source_folder)
-            if not source.exists():
-                print(f"Error: Source folder '{source}' does not exist!")
-                sys.exit(1)
-            
-            if not source.is_dir():
-                print(f"Error: '{source}' is not a directory!")
-                sys.exit(1)
-            
-            config = {
-                'source_folder': source,
-                'output_folder': Path(args.output_folder) if args.output_folder else None,
-                'use_ocr': args.use_ocr,
-                'merge_output': args.merge_output,
-                'max_workers': args.max_workers,
-                'use_cache': args.use_cache
-            }
+            parser.print_help()
+            print(f"\n{Colors.YELLOW}💡 Tip: Run without arguments for interactive mode{Colors.ENDC}")
+            if not QUESTIONARY_AVAILABLE:
+                print(f"   Install: {Colors.CYAN}pip install questionary rich{Colors.ENDC}")
+            sys.exit(1)
+        
+        # Validate source folder
+        source = Path(args.source_folder)
+        if not source.exists():
+            print(f"{Colors.RED}✗ Error: Source folder '{source}' does not exist!{Colors.ENDC}")
+            sys.exit(1)
+        
+        if not source.is_dir():
+            print(f"{Colors.RED}✗ Error: '{source}' is not a directory!{Colors.ENDC}")
+            sys.exit(1)
+        
+        config = {
+            'source_folder': source,
+            'output_folder': Path(args.output_folder) if args.output_folder else None,
+            'use_ocr': args.use_ocr,
+            'merge_output': args.merge_output,
+            'max_workers': args.max_workers,
+            'use_cache': args.use_cache
+        }
     
     # Convert documents
     converter = DocumentConverter(**config)

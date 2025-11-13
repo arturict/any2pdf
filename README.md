@@ -4,6 +4,10 @@
 
 Ein Python-Tool zur Konvertierung von verschiedensten Dateiformaten in durchsuchbare PDFs für die Verwendung mit KI-Tools wie ChatGPT.
 
+**🎯 NEW: Now even easier! Just run `./install.sh` and `python convert.py` - that's it!**
+
+📖 **[→ Quick Start Guide](QUICK_START.md)** | 📚 [Full Documentation](docs/USAGE.md)
+
 ## ✨ Features
 
 - 📄 **Office-Dokumente**: Konvertiert PPTX, DOCX, DOC, PPT, XLSX, XLS, ODT, ODP, ODS, RTF
@@ -22,30 +26,44 @@ Ein Python-Tool zur Konvertierung von verschiedensten Dateiformaten in durchsuch
 ## 🚀 Quickstart
 
 ```bash
-# 1. System-Abhängigkeiten installieren (Ubuntu/Debian)
-sudo apt-get update
-sudo apt-get install -y libreoffice tesseract-ocr tesseract-ocr-deu poppler-utils imagemagick
+# 1. One-Click Installation 🎯
+./install.sh
 
-# 2. Python-Umgebung einrichten
-python3 -m venv venv
+# 2. Start Converting! ✨
 source venv/bin/activate
-pip install -r requirements.txt
+python convert.py
 
-# 3. Dateien konvertieren
-python document_to_pdf.py /pfad/zum/ordner --merge
-
-# Nach der Konvertierung: Mit PDF chatten!
-# Wähle AI Provider (OpenAI/Gemini), Modell und bei GPT-5 das Reasoning Level
+# That's it! Interactive mode guides you through everything.
 ```
 
-**Windows-Nutzer**: Verwende [WSL (Windows Subsystem for Linux)](https://learn.microsoft.com/de-de/windows/wsl/install) für beste Kompatibilität:
+**Or use the CLI directly:**
+```bash
+./convert.sh wirtschaft  # Convert folder 'wirtschaft'
+./convert.sh docs --merge  # Convert and merge all PDFs
+```
+
+**Windows-Nutzer**: Verwende [WSL (Windows Subsystem for Linux)](https://learn.microsoft.com/de-de/windows/wsl/install):
 ```powershell
 wsl --install  # In PowerShell als Administrator
+# Then run ./install.sh in Ubuntu terminal
 ```
 
-## Installation
+## 📥 Installation
 
-### Ubuntu/Debian
+### Automatic (Recommended) 🎯
+
+```bash
+./install.sh
+```
+
+That's it! Works on Ubuntu, Debian, and macOS.
+
+### Manual Installation
+
+<details>
+<summary>Click to expand manual installation steps</summary>
+
+#### Ubuntu/Debian
 ```bash
 sudo apt-get update
 sudo apt-get install -y libreoffice tesseract-ocr tesseract-ocr-deu poppler-utils imagemagick
@@ -55,7 +73,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### macOS
+#### macOS
 ```bash
 brew install libreoffice tesseract tesseract-lang poppler imagemagick
 
@@ -64,35 +82,66 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Windows
-⚠️ **Verwende WSL (Windows Subsystem for Linux)** für beste Kompatibilität:
+#### Windows
+⚠️ **Use WSL (Windows Subsystem for Linux)**:
 
 ```powershell
-# In PowerShell als Administrator:
+# In PowerShell as Administrator:
 wsl --install
 ```
 
-Nach Installation von WSL, öffne Ubuntu-Terminal und folge den Ubuntu/Debian-Anweisungen.
+After WSL installation, open Ubuntu terminal and run `./install.sh`
+</details>
 
 ## Verwendung
 
-### Basis-Verwendung
+### 💫 Interaktiver Modus (Empfohlen)
+
+Der einfachste Weg - perfekt für Anfänger:
 
 ```bash
-# Alle Dokumente in einem Ordner konvertieren
-python document_to_pdf.py /pfad/zum/ordner
+# Super einfach - nur:
+python convert.py
 
-# Mit Zusammenführung aller PDFs
-python document_to_pdf.py /pfad/zum/ordner --merge
+# Oder:
+python document_to_pdf.py
+```
 
-# Mit benutzerdefiniertem Output-Ordner
-python document_to_pdf.py /pfad/zum/ordner -o /pfad/zum/output
+**Features:**
+- 🎨 Moderne, farbige Terminal-UI
+- 📁 Visueller Ordner-Browser
+- ✅ Echtzeit-Validierung
+- 💡 Hilfreiche Erklärungen zu jeder Option
+- 🎯 Intelligente Standard-Einstellungen
 
-# ⚡ Mit Parallel Processing (4 Workers)
-python document_to_pdf.py /pfad/zum/ordner --merge -j 4
+**Walkthrough:**
+1. Wähle Source-Ordner (mit Pfad-Autovervollständigung)
+2. Optional: Custom Output-Ordner
+3. OCR aktivieren? (Empfohlen für durchsuchbare PDFs)
+4. Alle PDFs zusammenführen? (Perfekt für ChatGPT)
+5. Anzahl paralleler Workers (4 empfohlen)
+6. Smart Caching aktivieren? (Spart Zeit bei Re-Runs)
+7. Konfiguration bestätigen und starten!
 
-# Ohne OCR (schneller, aber nicht durchsuchbar)
-python document_to_pdf.py /pfad/zum/ordner --no-ocr
+**[→ Ausführliche Anleitung: Interactive Mode Guide](docs/INTERACTIVE_MODE.md)**
+
+### ⌨️ CLI-Modus (Für Experten & Scripts)
+
+Direkter Zugriff mit Kommandozeilen-Flags:
+
+```bash
+# Quick way with convert.sh wrapper:
+./convert.sh wirtschaft              # Convert folder
+./convert.sh docs --merge            # Convert and merge
+./convert.sh docs --merge -j 4       # With parallel processing
+
+# Or directly with python:
+python convert.py /pfad/zum/ordner
+python convert.py /pfad/zum/ordner --merge
+python convert.py /pfad/zum/ordner -o /pfad/zum/output
+python convert.py /pfad/zum/ordner --merge -j 4
+python convert.py /pfad/zum/ordner --no-ocr
+python convert.py --help
 ```
 
 ### AI Chat Integration 🤖
@@ -135,13 +184,14 @@ python document_to_pdf.py ./documents --merge
 
 **Option A - Integrierter Chat (empfohlen):**
 ```bash
-python document_to_pdf.py ./unterrichtsmaterial --merge
+./convert.sh ./unterrichtsmaterial --merge
+# Oder: python convert.py ./unterrichtsmaterial --merge
 # Nach der Konvertierung 'y' eingeben, Provider/Modell wählen und direkt chatten!
 ```
 
 **Option B - PDF hochladen:**
 ```bash
-python document_to_pdf.py ./unterrichtsmaterial --merge
+./convert.sh ./unterrichtsmaterial --merge
 # Das zusammengeführte PDF 'merged_all_documents.pdf' zu ChatGPT/Claude hochladen
 ```
 
